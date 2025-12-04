@@ -1,0 +1,3 @@
+# Production dependencies
+Django>=3.2
+
