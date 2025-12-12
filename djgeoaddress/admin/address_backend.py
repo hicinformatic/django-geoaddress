@@ -88,7 +88,11 @@ def _parse_address_term(term: str) -> Dict[str, Optional[str]]:
 
 
 def build_address_suggestions(
-    config_list: list[Dict[str, Any]], term: str, backend: Optional[str] = None
+    config_list: list[Dict[str, Any]], 
+    term: str, 
+    backend: Optional[str] = None,
+    limit: Optional[int] = None,
+    min_confidence: Optional[float] = None,
 ) -> list[Dict[str, Any]]:
     if not config_list or not term or search_addresses_fn is None:
         return []
@@ -97,8 +101,8 @@ def build_address_suggestions(
         search_result = search_addresses_fn(
             backends_config=config_list,
             query=term,
-            min_confidence=0.0,
-            limit=20,
+            min_confidence=min_confidence if min_confidence is not None else 0.0,
+            limit=limit if limit is not None else 20,
             backend=backend,
         )
     except Exception as exc:  # pragma: no cover - defensive
@@ -605,6 +609,12 @@ class AddressLookupAdmin(admin.ModelAdmin):
         query = (request.GET.get("q") or "").strip()
         # Get backend name from filter parameter (e.g., "nominatim", "google_maps")
         backend_name = (request.GET.get("backend") or "").strip()
+        
+        # Get limit and min_confidence from request parameters
+        limit_param = request.GET.get("limit")
+        limit = int(limit_param) if limit_param else None
+        min_confidence_param = request.GET.get("min_confidence")
+        min_confidence = float(min_confidence_param) if min_confidence_param else None
 
         # Use all backends config for search_addresses
         # The backend parameter will be passed to force a specific backend
@@ -614,7 +624,11 @@ class AddressLookupAdmin(admin.ModelAdmin):
         if configs and query:
             # Pass backend_name to build_address_suggestions which will use it in search_addresses
             for entry in build_address_suggestions(
-                configs, query, backend=backend_name if backend_name else None
+                configs, 
+                query, 
+                backend=backend_name if backend_name else None,
+                limit=limit,
+                min_confidence=min_confidence,
             ):
                 raw = entry.get("raw") or {}
                 obj = AddressLookup(
@@ -674,11 +688,19 @@ class AddressLookupAdmin(admin.ModelAdmin):
         
         backend_name = request.GET.get("backend", "").strip()
         
+        # Get limit and min_confidence from request to pass to get_queryset
+        limit_param = request.GET.get("limit")
+        min_confidence_param = request.GET.get("min_confidence")
+        
         modified_get = QueryDict(mutable=True)
         modified_get.update(request.GET)
         modified_get["q"] = term
         if backend_name:
             modified_get["backend"] = backend_name
+        if limit_param:
+            modified_get["limit"] = limit_param
+        if min_confidence_param:
+            modified_get["min_confidence"] = min_confidence_param
         
         class ModifiedRequest:
             def __init__(self, original_request, modified_get):
@@ -696,10 +718,91 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 if not pk:
                     pk = obj.label or ""
                 
-                results.append({
+                # Extract all address fields
+                # Try to build address_line1 from house_number + road if not directly available
+                address_line1 = self._get_from_payload(obj, "address_line1", "line1")
+                if not address_line1 and obj.raw_payload:
+                    payload = obj.raw_payload
+                    normalized = payload.get("normalized_address") or {}
+                    normalized = normalized if isinstance(normalized, dict) else {}
+                    address_dict = payload.get("address") if isinstance(payload.get("address"), dict) else {}
+                    house_number = (
+                        payload.get("house_number") 
+                        or normalized.get("house_number")
+                        or address_dict.get("house_number")
+                    )
+                    road = (
+                        payload.get("road") 
+                        or normalized.get("road") 
+                        or payload.get("street") 
+                        or normalized.get("street")
+                        or address_dict.get("road")
+                        or address_dict.get("street")
+                    )
+                    if house_number and road:
+                        address_line1 = f"{house_number} {road}".strip()
+                    elif road:
+                        address_line1 = str(road)
+                    elif house_number:
+                        address_line1 = str(house_number)
+                
+                result = {
                     "id": pk,
                     "text": obj.label or str(obj),
-                })
+                    "reference": obj.backend_reference or None,
+                    "address_line1": address_line1 or None,
+                    "address_line2": self._get_from_payload(obj, "address_line2", "line2") or None,
+                    "address_line3": self._get_from_payload(obj, "address_line3", "line3") or None,
+                    "city": self._get_from_payload(obj, "city") or None,
+                    "postal_code": self._get_from_payload(obj, "postal_code", "postal_code") or None,
+                    "state": self._get_from_payload(obj, "state") or None,
+                    "region": self._get_from_payload(obj, "region") or None,
+                    "country": self._get_from_payload(obj, "country") or None,
+                    "municipality": self._get_from_payload(obj, "municipality") or None,
+                    "neighbourhood": self._get_from_payload(obj, "neighbourhood", "quarter", "suburb") or None,
+                    "address_type": self._get_from_payload(obj, "address_type", "type", "class", "osm_key", "osm_value") or None,
+                }
+                
+                # Extract latitude and longitude
+                if obj.raw_payload:
+                    payload = obj.raw_payload
+                    normalized = payload.get("normalized_address") or {}
+                    lat = payload.get("latitude") or normalized.get("latitude")
+                    lon = payload.get("longitude") or normalized.get("longitude")
+                    if lat is not None:
+                        try:
+                            result["latitude"] = float(lat)
+                        except (TypeError, ValueError):
+                            result["latitude"] = None
+                    else:
+                        result["latitude"] = None
+                    if lon is not None:
+                        try:
+                            result["longitude"] = float(lon)
+                        except (TypeError, ValueError):
+                            result["longitude"] = None
+                    else:
+                        result["longitude"] = None
+                    
+                    # Extract confidence
+                    confidence = payload.get("confidence") or normalized.get("confidence")
+                    if confidence is not None:
+                        try:
+                            result["confidence"] = float(confidence)
+                        except (TypeError, ValueError):
+                            result["confidence"] = None
+                    else:
+                        result["confidence"] = None
+                else:
+                    result["latitude"] = None
+                    result["longitude"] = None
+                    result["confidence"] = None
+                
+                # Extract backend display name
+                backend_display = self.backend_used_display(obj)
+                result["backend"] = backend_display if backend_display != "—" else (obj.backend_used or None)
+                
+                results.append(result)
         except (TypeError, AttributeError, StopIteration):
             pass
         
@@ -897,13 +1000,54 @@ class AddressLookupAdmin(admin.ModelAdmin):
         )
 
     def _get_from_payload(self, obj: AddressLookup, *keys: str) -> Optional[str]:
-        """Extract value from raw_payload using multiple possible keys."""
+        """Extract value from raw_payload using multiple possible keys.
+        
+        Searches in:
+        1. Direct payload keys
+        2. normalized_address dict keys (if it's a dict)
+        3. address dict keys (for Nominatim-style responses)
+        4. Alternative key names (line1/address_line1, town/city, etc.)
+        """
         if not obj.raw_payload:
             return None
         payload = obj.raw_payload
-        normalized = payload.get("normalized_address") or {}
+        normalized_raw = payload.get("normalized_address")
+        # normalized_address can be a dict or a string (formatted address)
+        normalized = normalized_raw if isinstance(normalized_raw, dict) else {}
+        # Some backends (like Nominatim) put address components in an "address" dict
+        address_dict = payload.get("address") if isinstance(payload.get("address"), dict) else {}
+        
+        # Build list of all possible keys to check
+        all_keys = []
         for key in keys:
-            value = payload.get(key) or normalized.get(key)
+            all_keys.append(key)
+            # Add alternative names
+            if key == "address_line1":
+                all_keys.extend(["line1", "street", "street_address", "housenumber"])
+            elif key == "address_line2":
+                all_keys.extend(["line2", "address_line2", "neighbourhood"])
+            elif key == "address_line3":
+                all_keys.extend(["line3", "address_line3", "borough"])
+            elif key == "city":
+                all_keys.extend(["town", "locality", "localadmin", "municipality", "county", "village"])
+            elif key == "postal_code":
+                all_keys.extend(["postalcode", "postcode", "zip", "zipcode", "postcode"])
+            elif key == "state":
+                all_keys.extend(["region", "province", "administrative_area", "state_district"])
+            elif key == "country":
+                all_keys.extend(["country_code", "country_a"])
+            elif key == "neighbourhood":
+                all_keys.extend(["quarter", "suburb", "district", "locality"])
+            elif key == "address_type":
+                all_keys.extend(["type", "class", "osm_key", "osm_value", "place_type"])
+        
+        # Search in payload, normalized_address, and address dict
+        for key in all_keys:
+            value = (
+                payload.get(key) 
+                or (normalized.get(key) if isinstance(normalized, dict) else None)
+                or address_dict.get(key)
+            )
             if value:
                 return str(value)
         return None
