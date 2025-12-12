@@ -9,6 +9,7 @@ class TestLocation(models.Model):
     
     name = models.CharField(max_length=200, help_text="Location name")
     address = AddressField(help_text="Full address with geocoding")
+    backend = models.CharField(max_length=100, blank=True, null=True, help_text="Backend used for geocoding")
     notes = models.TextField(blank=True, help_text="Additional notes")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

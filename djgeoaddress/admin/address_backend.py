@@ -212,6 +212,16 @@ class AddressBackendInfoAdmin(admin.ModelAdmin):
         if not term:
             return queryset, False
 
+        try:
+            queryset_list = []
+            for obj in queryset:
+                queryset_list.append(obj)
+        except (TypeError, AttributeError, StopIteration):
+            return queryset, False
+
+        if not queryset_list:
+            return AddressBackendInfoQuerySet(model=self.model, data=[]), False
+
         def _matches(obj: AddressBackendInfo) -> bool:
             candidates = [
                 obj.display_name,
@@ -225,11 +235,45 @@ class AddressBackendInfoAdmin(admin.ModelAdmin):
             candidates.append(str(diag.get("class", "")))
             return any(value and term in str(value).lower() for value in candidates)
 
-        filtered = [obj for obj in queryset if _matches(obj)]
+        filtered = [obj for obj in queryset_list if _matches(obj)]
         return AddressBackendInfoQuerySet(model=self.model, data=filtered), False
 
     def has_add_permission(self, request):
         return False
+    
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "autocomplete/",
+                self.admin_site.admin_view(self.backend_autocomplete_view),
+                name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_autocomplete",
+            ),
+        ]
+        return custom_urls + urls
+    
+    def backend_autocomplete_view(self, request):
+        from django.http import JsonResponse
+        
+        term = request.GET.get("term") or request.GET.get("q", "").strip()
+        if not term:
+            return JsonResponse({"results": []})
+        
+        queryset = self.get_queryset(request)
+        filtered_queryset, use_distinct = self.get_search_results(request, queryset, term)
+        
+        results = []
+        try:
+            for obj in filtered_queryset:
+                results.append({
+                    "id": str(obj.pk),
+                    "text": str(obj),
+                })
+        except (TypeError, AttributeError, StopIteration):
+            pass
+        
+        return JsonResponse({"results": results})
 
     def get_object(self, request, object_id, from_field=None):
         """Récupère l'objet address backend par son name (qui est maintenant le pk)."""
@@ -589,6 +633,77 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 data.append(obj)
 
         return AddressLookupQuerySet(model=AddressLookup, data=data)
+    
+    def get_search_results(self, request, queryset, search_term):
+        if not search_term:
+            return queryset, False
+        return queryset, False
+    
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "autocomplete/",
+                self.admin_site.admin_view(self.address_autocomplete_view),
+                name=f"{self.model._meta.app_label}_{self.model._meta.model_name}_autocomplete",
+            ),
+        ]
+        return custom_urls + urls
+    
+    def address_autocomplete_view(self, request):
+        from django.http import JsonResponse
+        from django.http import QueryDict
+        from django.core.cache import cache
+        
+        fetch_data = request.GET.get("fetch_data")
+        if fetch_data:
+            term = request.GET.get("term", "").strip()
+            if term:
+                cache_key = f"geoaddress:addresslookup:{term}"
+                cached_data = cache.get(cache_key)
+                if cached_data and isinstance(cached_data, dict):
+                    payload = cached_data.get("payload", {})
+                    normalized = payload.get("normalized_address") or payload
+                    return JsonResponse({"data": normalized})
+            return JsonResponse({"data": None})
+        
+        term = request.GET.get("term") or request.GET.get("q", "").strip()
+        if not term:
+            return JsonResponse({"results": []})
+        
+        backend_name = request.GET.get("backend", "").strip()
+        
+        modified_get = QueryDict(mutable=True)
+        modified_get.update(request.GET)
+        modified_get["q"] = term
+        if backend_name:
+            modified_get["backend"] = backend_name
+        
+        class ModifiedRequest:
+            def __init__(self, original_request, modified_get):
+                self.GET = modified_get
+                self.user = original_request.user
+                self.method = original_request.method
+        
+        modified_request = ModifiedRequest(request, modified_get)
+        queryset = self.get_queryset(modified_request)
+        
+        results = []
+        try:
+            for obj in queryset:
+                pk = getattr(obj, "_lookup_slug", None) or str(obj.pk) if hasattr(obj, "pk") else None
+                if not pk:
+                    pk = obj.label or ""
+                
+                results.append({
+                    "id": pk,
+                    "text": obj.label or str(obj),
+                })
+        except (TypeError, AttributeError, StopIteration):
+            pass
+        
+        return JsonResponse({"results": results})
 
     # Helpers -------------------------------------------------------------
     def _build_reference_slug(
