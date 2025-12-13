@@ -66,12 +66,17 @@ class AddressWidget(forms.MultiWidget):
             forms.TextInput(attrs={"placeholder": _("City")}),
             forms.TextInput(attrs={"placeholder": _("State / Region")}),
             forms.TextInput(attrs={"placeholder": _("Country (ISO code)")}),
+            forms.TextInput(attrs={"placeholder": _("Municipality")}),
+            forms.HiddenInput(),
+            forms.HiddenInput(),
+            forms.HiddenInput(),
+            forms.HiddenInput(),
         ]
         super().__init__(widgets, attrs)
 
     def decompress(self, value: Any) -> List[Optional[str]]:
         if not value:
-            return ["", "", "", "", "", "", ""]
+            return ["", "", "", "", "", "", "", "", None, None, "", ""]
         source = value if isinstance(value, dict) else {}
         return [
             source.get("line1") or source.get("address_line1") or "",
@@ -81,6 +86,11 @@ class AddressWidget(forms.MultiWidget):
             source.get("city") or "",
             source.get("state") or "",
             source.get("country") or "",
+            source.get("municipality") or source.get("extras", {}).get("municipality") or "",
+            source.get("confidence"),
+            source.get("relevance"),
+            source.get("backend_used") or source.get("backend") or "",
+            source.get("backend_reference") or source.get("address_reference") or "",
         ]
 
 
@@ -101,6 +111,11 @@ class AddressFormField(forms.MultiValueField):
             forms.CharField(required=False, label=_("City")),
             forms.CharField(required=False, label=_("State / Region")),
             forms.CharField(required=False, label=_("Country (ISO code)")),
+            forms.CharField(required=False, label=_("Municipality")),
+            forms.FloatField(required=False, label=_("Confidence")),
+            forms.FloatField(required=False, label=_("Relevance")),
+            forms.CharField(required=False, label=_("Backend used")),
+            forms.CharField(required=False, label=_("Backend reference")),
         ]
         super().__init__(
             fields=fields,
@@ -110,10 +125,10 @@ class AddressFormField(forms.MultiValueField):
         self.use_backend = use_backend
         self.current_user = None
 
-    def compress(self, data_list: Iterable[Any]) -> Dict[str, str]:
+    def compress(self, data_list: Iterable[Any]) -> Dict[str, Any]:
         items = list(data_list or [])
-        if len(items) < 7:
-            items.extend([""] * (7 - len(items)))
+        if len(items) < 12:
+            items.extend([""] * (12 - len(items)))
         address = {
             "line1": items[0] or "",
             "line2": items[1] or "",
@@ -122,8 +137,13 @@ class AddressFormField(forms.MultiValueField):
             "city": items[4] or "",
             "state": items[5] or "",
             "country": items[6] or "",
+            "municipality": items[7] or "",
+            "confidence": float(items[8]) if items[8] not in (None, "") else None,
+            "relevance": float(items[9]) if items[9] not in (None, "") else None,
+            "backend_used": items[10] or "",
+            "backend_reference": items[11] or "",
         }
-        return {key: value for key, value in address.items() if value}
+        return {key: value for key, value in address.items() if value not in (None, "")}
 
     def clean(self, value: Any) -> Dict[str, Any]:
         data = super().clean(value)
@@ -143,6 +163,9 @@ class AddressFormField(forms.MultiValueField):
         if not backends_config:
             return data
 
+        metadata_fields = ["municipality", "confidence", "relevance", "backend_used", "backend_reference"]
+        original_metadata = {key: data.get(key) for key in metadata_fields if key in data}
+
         try:
             normalized, payload = GeoAddress.normalize_with_backends(
                 backends_config,
@@ -154,6 +177,11 @@ class AddressFormField(forms.MultiValueField):
             )
 
         result: Dict[str, Any] = normalized.to_dict()
+        
+        for key, value in original_metadata.items():
+            if value not in (None, "") and key not in result:
+                result[key] = value
+        
         if payload.get("errors"):
             raise ValidationError(
                 _("Address validation failed: %(errors)s")
@@ -166,6 +194,13 @@ class AddressFormField(forms.MultiValueField):
     ) -> Dict[str, Any]:
         if not result:
             return result
+        
+        metadata_fields = ["municipality", "confidence", "relevance", "backend_used", "backend_reference"]
+        for key in metadata_fields:
+            if key in original_data and original_data[key] not in (None, ""):
+                if key not in result or not result.get(key):
+                    result[key] = original_data[key]
+        
         if result.get("backend_used"):
             return result
         if not any(original_data.values()):
@@ -230,6 +265,54 @@ class AddressField(models.JSONField):
         if isinstance(data, dict):
             return data
         return {}
+
+    @staticmethod
+    def get_admin_url(address_data: Dict[str, Any]) -> Optional[str]:
+        """Generate admin URL for address detail view from address data.
+        
+        Args:
+            address_data: Dictionary containing address data with backend_used and backend_reference
+            
+        Returns:
+            Admin URL string or None if URL cannot be generated
+        """
+        from urllib.parse import quote
+        from django.urls import reverse
+        
+        backend_used = address_data.get("backend_used") or address_data.get("backend")
+        backend_reference = address_data.get("backend_reference") or address_data.get("address_reference")
+        
+        if not backend_reference or not backend_used:
+            return None
+        
+        backend_identifier = str(backend_used).strip()
+        if not backend_identifier:
+            return None
+        
+        _REFERENCE_SAFE_CHARS = "._~:@"
+        _SLUG_SEPARATOR = "-"
+        
+        def encode_token(value: str) -> str:
+            result = ""
+            for char in value:
+                if char in _REFERENCE_SAFE_CHARS:
+                    result += char
+                else:
+                    result += quote(char)
+            return result
+        
+        backend_token = encode_token(backend_identifier)
+        reference_token = encode_token(str(backend_reference).strip())
+        
+        if not backend_token or not reference_token:
+            return None
+        
+        slug_value = f"{backend_token}{_SLUG_SEPARATOR}{reference_token}"
+        
+        try:
+            return reverse("admin:djgeoaddress_addresslookup_change", args=[slug_value])
+        except Exception:
+            return None
 
     def formfield(
         self,

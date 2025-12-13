@@ -12,6 +12,63 @@ except ImportError:
     search_addresses = None
 
 
+def _extract_backend_identifier(backend_display: str) -> str:
+    """Extract backend identifier from display name.
+    
+    Maps display names to identifiers:
+    - "OpenStreetMap Nominatim" -> "nominatim"
+    - "Photon" -> "photon"
+    - etc.
+    """
+    if not backend_display:
+        return ""
+    
+    backend_lower = backend_display.lower().strip()
+    
+    # Map common display names to identifiers
+    backend_map = {
+        "openstreetmap nominatim": "nominatim",
+        "nominatim": "nominatim",
+        "photon": "photon",
+        "google maps": "google_maps",
+        "here": "here",
+        "mapbox": "mapbox",
+        "opencage": "opencage",
+        "locationiq": "locationiq",
+        "geocode earth": "geocode_earth",
+        "maps.co": "maps_co",
+        "maps co": "maps_co",
+        "geoapify": "geoapify",
+    }
+    
+    # Check exact match first
+    if backend_lower in backend_map:
+        return backend_map[backend_lower]
+    
+    # Check if it contains any of the mapped names
+    for display_name, identifier in backend_map.items():
+        if display_name in backend_lower or backend_lower in display_name:
+            return identifier
+    
+    # Try to extract from display name
+    # Remove common prefixes
+    backend_id = backend_lower.replace("openstreetmap ", "").replace("openstreetmap_", "")
+    # Replace spaces with underscores
+    backend_id = backend_id.replace(" ", "_").strip("_")
+    
+    # If still empty or just underscores, try to get the last word
+    if not backend_id or backend_id == "_":
+        words = backend_lower.split()
+        if words:
+            backend_id = words[-1]  # Take last word
+    
+    # Final check: if backend_id is still empty or just whitespace, return empty string
+    if not backend_id or not backend_id.strip():
+        return ""
+    
+    return backend_id.strip()
+
+
 @require_GET
 def address_autocomplete_admin_view(request):
     """Admin address autocomplete view for AddressField widgets."""
@@ -48,14 +105,55 @@ def address_autocomplete_admin_view(request):
             min_confidence=min_confidence_float,
         )
         results = search_result.get("results", [])
-        formatted_results = [
-            {
-                "id": addr.get("formatted", ""),  # Use formatted address as ID
-                "text": addr.get("formatted", ""),  # Display formatted address
-                **addr  # Include all address components
-            }
-            for addr in results
-        ]
+        # Results are already standardized by search_addresses
+        # Add id and admin_url to each result
+        formatted_results = []
+        for addr in results:
+            # Build id from backend and reference
+            backend_display = addr.get("backend") or ""
+            reference = addr.get("reference")
+            addr_id = None
+            backend_id = None
+            
+            if reference and backend_display:
+                backend_id = _extract_backend_identifier(backend_display)
+                # Ensure backend_id is not empty
+                if backend_id and backend_id.strip() and reference:
+                    addr_id = f"{backend_id}-{reference}"
+            
+            # If we still don't have an id, try to use the reference directly
+            if not addr_id and reference:
+                # Try to extract backend from other fields
+                backend_used = addr.get("backend_used") or ""
+                if backend_used:
+                    backend_id = _extract_backend_identifier(backend_used)
+                    if backend_id and backend_id.strip():
+                        addr_id = f"{backend_id}-{reference}"
+            
+            if not addr_id:
+                # Fallback to text as id
+                addr_id = addr.get("text", "") or ""
+            
+            # Generate admin_url using AddressField.get_admin_url
+            admin_url = None
+            if reference and backend_id and backend_id.strip():
+                try:
+                    from ..fields import AddressField
+                    # Build address data dict for get_admin_url
+                    address_data = {
+                        "backend_used": backend_id,
+                        "backend_reference": reference,
+                        "backend": backend_id,
+                        "address_reference": reference,
+                    }
+                    admin_url = AddressField.get_admin_url(address_data)
+                except Exception:
+                    admin_url = None
+            
+            formatted_result = dict(addr)
+            formatted_result["id"] = addr_id
+            formatted_result["admin_url"] = admin_url
+            formatted_results.append(formatted_result)
         return JsonResponse({"results": formatted_results})
     except Exception as exc:
         return JsonResponse(

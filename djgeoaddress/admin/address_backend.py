@@ -501,6 +501,75 @@ class BackendFilter(admin.SimpleListFilter):
         return queryset
 
 
+def _standardize_address_result_django(
+    result: Dict[str, Any],
+    *,
+    backend_display: Optional[str] = None,
+    query: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Standardize address result to consistent format for Django.
+    
+    Returns a dictionary with always the same fields:
+    - text: formatted address string
+    - reference: backend reference ID
+    - address_line1, address_line2, address_line3
+    - city, postal_code, state, region, country
+    - municipality, neighbourhood, address_type
+    - latitude, longitude
+    - confidence, relevance
+    - backend: backend display name
+    """
+    # Get formatted address (text)
+    text = (
+        result.get("formatted_address") or
+        result.get("text") or
+        result.get("label") or
+        query or
+        ""
+    )
+    
+    # Get reference (prefer backend_reference, fallback to address_reference)
+    reference = (
+        result.get("backend_reference") or
+        result.get("address_reference") or
+        result.get("reference") or
+        None
+    )
+    
+    # Normalize numeric values
+    def safe_float(value: Any) -> Optional[float]:
+        if value is None or value == "":
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+    
+    # Build standardized result
+    standardized = {
+        "text": text,
+        "reference": reference,
+        "address_line1": result.get("address_line1") or None,
+        "address_line2": result.get("address_line2") or None,
+        "address_line3": result.get("address_line3") or None,
+        "city": result.get("city") or None,
+        "postal_code": result.get("postal_code") or None,
+        "state": result.get("state") or None,
+        "region": result.get("region") or None,
+        "country": result.get("country") or None,
+        "municipality": result.get("municipality") or None,
+        "neighbourhood": result.get("neighbourhood") or None,
+        "address_type": result.get("address_type") or None,
+        "latitude": safe_float(result.get("latitude")),
+        "longitude": safe_float(result.get("longitude")),
+        "confidence": safe_float(result.get("confidence")),
+        "relevance": safe_float(result.get("relevance")),
+        "backend": backend_display or result.get("backend") or result.get("backend_used") or None,
+    }
+    
+    return standardized
+
+
 @admin.register(AddressLookup)
 class AddressLookupAdmin(admin.ModelAdmin):
     list_display = [
@@ -686,7 +755,53 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 if cached_data and isinstance(cached_data, dict):
                     payload = cached_data.get("payload", {})
                     normalized = payload.get("normalized_address") or payload
-                    return JsonResponse({"data": normalized})
+                    result_data = normalized.copy() if isinstance(normalized, dict) else {}
+                    # Also copy fields from payload root level
+                    for key in ["address_line1", "address_line2", "address_line3", "city", "postal_code", 
+                               "state", "region", "country", "municipality", "neighbourhood", "address_type",
+                               "latitude", "longitude", "confidence", "relevance", "formatted_address",
+                               "backend_reference", "address_reference", "backend_used", "backend"]:
+                        if key in payload and key not in result_data:
+                            result_data[key] = payload[key]
+                    
+                    # Get backend display name
+                    backend_used = result_data.get("backend_used") or payload.get("backend_used")
+                    backend_display = None
+                    if backend_used:
+                        # Try to get display name from backend config
+                        try:
+                            if get_address_backends_fn:
+                                backends = get_address_backends_fn(get_backend_configs())
+                                if backends:
+                                    for backend in backends:
+                                        if getattr(backend, "name", "").lower() == str(backend_used).lower():
+                                            backend_display = getattr(backend, "display_name", None) or getattr(backend, "label", None)
+                                            break
+                        except Exception:
+                            pass
+                    
+                    # Standardize result
+                    data = _standardize_address_result_django(
+                        result_data,
+                        backend_display=backend_display,
+                        query=term,
+                    )
+                    
+                    # Add admin_url if we have backend_used and backend_reference
+                    backend_reference = data.get("reference")
+                    if backend_used and backend_reference:
+                        slug_value = self._build_reference_slug(backend_used, backend_reference)
+                        if slug_value:
+                            try:
+                                data["admin_url"] = reverse("admin:djgeoaddress_addresslookup_change", args=[slug_value])
+                            except Exception:
+                                data["admin_url"] = None
+                        else:
+                            data["admin_url"] = None
+                    else:
+                        data["admin_url"] = None
+                    
+                    return JsonResponse({"data": data})
             return JsonResponse({"data": None})
         
         term = request.GET.get("term") or request.GET.get("q", "").strip()
@@ -725,100 +840,120 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 if not pk:
                     pk = obj.label or ""
                 
-                # Extract all address fields
-                # Try to build address_line1 from house_number + road if not directly available
-                address_line1 = self._get_from_payload(obj, "address_line1", "line1")
-                if not address_line1 and obj.raw_payload:
-                    payload = obj.raw_payload
-                    normalized = payload.get("normalized_address") or {}
-                    normalized = normalized if isinstance(normalized, dict) else {}
-                    address_dict = payload.get("address") if isinstance(payload.get("address"), dict) else {}
-                    house_number = (
-                        payload.get("house_number") 
-                        or normalized.get("house_number")
-                        or address_dict.get("house_number")
-                    )
-                    road = (
-                        payload.get("road") 
-                        or normalized.get("road") 
-                        or payload.get("street") 
-                        or normalized.get("street")
-                        or address_dict.get("road")
-                        or address_dict.get("street")
-                    )
-                    if house_number and road:
-                        address_line1 = f"{house_number} {road}".strip()
-                    elif road:
-                        address_line1 = str(road)
-                    elif house_number:
-                        address_line1 = str(house_number)
-                
-                result = {
-                    "id": pk,
-                    "text": obj.label or str(obj),
-                    "reference": obj.backend_reference or None,
-                    "address_line1": address_line1 or None,
-                    "address_line2": self._get_from_payload(obj, "address_line2", "line2") or None,
-                    "address_line3": self._get_from_payload(obj, "address_line3", "line3") or None,
-                    "city": self._get_from_payload(obj, "city") or None,
-                    "postal_code": self._get_from_payload(obj, "postal_code", "postal_code") or None,
-                    "state": self._get_from_payload(obj, "state") or None,
-                    "region": self._get_from_payload(obj, "region") or None,
-                    "country": self._get_from_payload(obj, "country") or None,
-                    "municipality": self._get_from_payload(obj, "municipality") or None,
-                    "neighbourhood": self._get_from_payload(obj, "neighbourhood", "quarter", "suburb") or None,
-                    "address_type": self._get_from_payload(obj, "address_type", "type", "class", "osm_key", "osm_value") or None,
-                }
-                
-                # Extract latitude and longitude
+                # Build result dict from raw_payload (which should already be standardized)
+                # or extract from obj properties
+                result_data = {}
                 if obj.raw_payload:
                     payload = obj.raw_payload
                     normalized = payload.get("normalized_address") or {}
-                    lat = payload.get("latitude") or normalized.get("latitude")
-                    lon = payload.get("longitude") or normalized.get("longitude")
-                    if lat is not None:
-                        try:
-                            result["latitude"] = float(lat)
-                        except (TypeError, ValueError):
-                            result["latitude"] = None
-                    else:
-                        result["latitude"] = None
-                    if lon is not None:
-                        try:
-                            result["longitude"] = float(lon)
-                        except (TypeError, ValueError):
-                            result["longitude"] = None
-                    else:
-                        result["longitude"] = None
-                    
-                    confidence = payload.get("confidence") or normalized.get("confidence")
-                    if confidence is not None:
-                        try:
-                            result["confidence"] = float(confidence)
-                        except (TypeError, ValueError):
-                            result["confidence"] = None
-                    else:
-                        result["confidence"] = None
-                    
-                    relevance = payload.get("relevance") or normalized.get("relevance")
-                    if relevance is not None:
-                        try:
-                            result["relevance"] = float(relevance)
-                        except (TypeError, ValueError):
-                            result["relevance"] = None
-                    else:
-                        result["relevance"] = None
-                else:
-                    result["latitude"] = None
-                    result["longitude"] = None
-                    result["confidence"] = None
-                    result["relevance"] = None
+                    # Use normalized_address if available, otherwise use payload directly
+                    result_data = dict(normalized) if normalized else dict(payload)
+                    # Also copy fields from payload root level
+                    for key in ["address_line1", "address_line2", "address_line3", "city", "postal_code", 
+                               "state", "region", "country", "municipality", "neighbourhood", "address_type",
+                               "latitude", "longitude", "confidence", "relevance", "formatted_address",
+                               "backend_reference", "address_reference", "backend_used", "backend"]:
+                        if key in payload and key not in result_data:
+                            result_data[key] = payload[key]
                 
-                # Extract backend display name
+                # Fallback to extracting from obj if raw_payload is empty
+                if not result_data:
+                    result_data = {
+                        "address_line1": self._get_from_payload(obj, "address_line1", "line1"),
+                        "address_line2": self._get_from_payload(obj, "address_line2", "line2"),
+                        "address_line3": self._get_from_payload(obj, "address_line3", "line3"),
+                        "city": self._get_from_payload(obj, "city"),
+                        "postal_code": self._get_from_payload(obj, "postal_code", "postal_code"),
+                        "state": self._get_from_payload(obj, "state"),
+                        "region": self._get_from_payload(obj, "region"),
+                        "country": self._get_from_payload(obj, "country"),
+                        "municipality": self._get_from_payload(obj, "municipality"),
+                        "neighbourhood": self._get_from_payload(obj, "neighbourhood", "quarter", "suburb"),
+                        "address_type": self._get_from_payload(obj, "address_type", "type", "class", "osm_key", "osm_value"),
+                        "backend_reference": obj.backend_reference,
+                        "backend_used": obj.backend_used,
+                        "formatted_address": obj.label or str(obj),
+                    }
+                    if obj.raw_payload:
+                        payload = obj.raw_payload
+                        normalized = payload.get("normalized_address") or {}
+                        result_data["latitude"] = payload.get("latitude") or normalized.get("latitude")
+                        result_data["longitude"] = payload.get("longitude") or normalized.get("longitude")
+                        result_data["confidence"] = payload.get("confidence") or normalized.get("confidence")
+                        result_data["relevance"] = payload.get("relevance") or normalized.get("relevance")
+                
+                # Get backend display name
                 backend_display = self.backend_used_display(obj)
-                result["backend"] = backend_display if backend_display != "—" else (obj.backend_used or None)
+                backend_display_str = backend_display if backend_display != "—" else (obj.backend_used or None)
                 
-                results.append(result)
+                # Standardize result
+                standardized = _standardize_address_result_django(
+                    result_data,
+                    backend_display=backend_display_str,
+                    query=term,
+                )
+                
+                # Add Django-specific fields (id and admin_url)
+                # Build id from backend and reference (same logic as address_autocomplete_admin_view)
+                reference = standardized.get("reference")
+                backend_id = None
+                addr_id = None
+                
+                if reference and backend_display_str:
+                    # Extract backend identifier from display name
+                    from .views import _extract_backend_identifier
+                    backend_id = _extract_backend_identifier(backend_display_str)
+                    if backend_id and backend_id.strip() and reference:
+                        addr_id = f"{backend_id}-{reference}"
+                
+                # If we still don't have an id, try to use the reference directly
+                if not addr_id and reference:
+                    # Try to extract backend from backend_used
+                    backend_used = obj.backend_used or ""
+                    if backend_used:
+                        from .views import _extract_backend_identifier
+                        backend_id = _extract_backend_identifier(backend_used)
+                        if backend_id and backend_id.strip():
+                            addr_id = f"{backend_id}-{reference}"
+                
+                # Use pk as fallback if we have it and it's valid
+                if not addr_id:
+                    if pk and pk != "None" and str(pk).strip():
+                        addr_id = str(pk)
+                    else:
+                        # Final fallback to text
+                        addr_id = standardized.get("text", "") or ""
+                
+                standardized["id"] = addr_id
+                
+                # Add admin URL for detail view
+                # Try to use slug_value first, then generate from backend_id and reference
+                slug_value = self._get_obj_slug(obj)
+                admin_url = None
+                
+                if slug_value:
+                    try:
+                        admin_url = reverse("admin:djgeoaddress_addresslookup_change", args=[slug_value])
+                    except Exception:
+                        admin_url = None
+                
+                # If slug_value didn't work, try to generate from backend_id and reference
+                if not admin_url and reference and backend_id and backend_id.strip():
+                    try:
+                        from ..fields import AddressField
+                        address_data = {
+                            "backend_used": backend_id,
+                            "backend_reference": reference,
+                            "backend": backend_id,
+                            "address_reference": reference,
+                        }
+                        admin_url = AddressField.get_admin_url(address_data)
+                    except Exception:
+                        admin_url = None
+                
+                standardized["admin_url"] = admin_url
+                
+                results.append(standardized)
         except (TypeError, AttributeError, StopIteration):
             pass
         
@@ -897,19 +1032,41 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 "",
             )
         cache_slug = slug_value or self._build_reference_slug(backend_identifier, backend_reference)
+        
+        # Check cache first, but validate that it contains address data
         if cache_slug:
             cached_entry = cache.get(self._cache_key(cache_slug))
             if cached_entry:
                 payload = dict(cached_entry.get("payload") or {})
-                backend_label = cached_entry.get("backend_label") or backend_identifier
-                payload.setdefault("backend_reference", backend_reference)
-                payload.setdefault("backend_used", backend_identifier)
-                return payload, backend_label
+                # Check if payload has address data or if it's just an error
+                normalized = payload.get("normalized_address", {})
+                if isinstance(normalized, dict):
+                    normalized_dict = normalized
+                else:
+                    normalized_dict = {}
+                
+                has_address_data = (
+                    payload.get("address_line1") or
+                    payload.get("line1") or
+                    payload.get("city") or
+                    normalized_dict.get("line1") or
+                    normalized_dict.get("address_line1") or
+                    normalized_dict.get("city") or
+                    payload.get("formatted_address") or
+                    payload.get("formatted")
+                )
+                # If cache has valid data and no error, use it
+                if has_address_data and not payload.get("error"):
+                    backend_label = cached_entry.get("backend_label") or backend_identifier
+                    payload.setdefault("backend_reference", backend_reference)
+                    payload.setdefault("backend_used", backend_identifier)
+                    return payload, backend_label
+                # If cache has error or no data, fall through to fetch from backend
 
         if get_address_by_reference_fn is None:
             return (
                 {
-                    "error": "python-missive helpers are not available.",
+                    "error": "python-geoaddress helpers are not available.",
                     "backend_reference": backend_reference,
                 },
                 backend_identifier,
@@ -929,6 +1086,25 @@ class AddressLookupAdmin(admin.ModelAdmin):
             address_reference=backend_reference,
         )
         backend_label = payload.get("backend_used") or backend_identifier
+        
+        # Ensure payload has required structure
+        if payload and not payload.get("error"):
+            # Ensure backend_used and backend_reference are set
+            payload.setdefault("backend_used", backend_identifier)
+            payload.setdefault("backend_reference", backend_reference)
+            payload.setdefault("address_reference", backend_reference)
+            
+            # Ensure normalized_address exists with address data
+            if not payload.get("normalized_address"):
+                normalized = {}
+                for key in ["line1", "line2", "line3", "address_line1", "address_line2", "address_line3",
+                           "postal_code", "city", "state", "country", "municipality",
+                           "latitude", "longitude", "confidence", "relevance", "formatted_address"]:
+                    if key in payload and payload[key] not in (None, ""):
+                        normalized[key] = payload[key]
+                if normalized:
+                    payload["normalized_address"] = normalized
+        
         if cache_slug:
             self._cache_payload(cache_slug, payload, backend_label)
         return payload, backend_label
@@ -989,15 +1165,169 @@ class AddressLookupAdmin(admin.ModelAdmin):
         if not backend_name or not backend_reference:
             messages.error(request, _("Unable to open detail view for this reference."))
             return None
-        payload, backend_label = self._fetch_backend_payload(
-            backend_name, backend_reference, slug_value=object_id
-        )
+        
+        # Always fetch fresh data from backend for detail view (ignore cache)
+        # This ensures we have the latest data
+        backend_identifier = self._normalize_backend_identifier(backend_name)
+        if not backend_identifier:
+            messages.error(request, _("Invalid backend identifier."))
+            return None
+        
+        if get_address_by_reference_fn is None:
+            messages.error(request, _("python-geoaddress helpers are not available."))
+            return None
+        
+        configs = get_backend_configs()
+        if not configs:
+            messages.error(request, _("No address backends configured."))
+            return None
+        
+        # Try to get the backend - use the identifier as-is, or try lowercase
+        backend_to_try = [backend_identifier, backend_identifier.lower()]
+        payload = None
+        last_error = None
+        
+        for backend_name_attempt in backend_to_try:
+            try:
+                payload = get_address_by_reference_fn(
+                    configs,
+                    backend=backend_name_attempt,
+                    address_reference=backend_reference,
+                )
+                # If we got data without error, use it
+                if payload and not payload.get("error"):
+                    break
+                # If we got an error but it's not "backend not found", keep trying
+                if payload and payload.get("error"):
+                    error_msg = payload.get("error", "")
+                    if "not found" not in error_msg.lower():
+                        last_error = payload
+                        break
+                    last_error = payload
+            except Exception as exc:
+                last_error = {"error": str(exc), "errors": [str(exc)]}
+                continue
+        
+        if not payload:
+            if last_error:
+                messages.error(
+                    request,
+                    _("Failed to fetch address: %(error)s")
+                    % {"error": last_error.get("error", "Unknown error")},
+                )
+            else:
+                messages.error(request, _("Failed to fetch address data from backend."))
+            return None
+        
+        backend_label = payload.get("backend_used") or backend_identifier
+        
+        # Update cache with fresh data
+        cache_slug = object_id or self._build_reference_slug(backend_identifier, backend_reference)
+        if cache_slug:
+            self._cache_payload(cache_slug, payload, backend_label)
+        
         if "error" in payload:
+            error_msg = payload.get("error", "Unknown error")
             messages.warning(
                 request,
                 _("Backend response contains an error: %(error)s")
-                % {"error": payload.get("error")},
+                % {"error": error_msg},
             )
+            # Even if there's an error, try to display what we have
+            if not payload.get("line1") and not payload.get("address_line1") and not payload.get("city"):
+                # If payload is completely empty, return None to show error
+                return None
+        
+        # Ensure payload has normalized_address structure for display methods
+        if payload and isinstance(payload, dict):
+            # First, ensure normalized_address exists and is a dict
+            normalized = payload.get("normalized_address", {})
+            if not isinstance(normalized, dict):
+                normalized = {}
+            
+            # Copy ALL fields from payload root to normalized_address
+            # This ensures everything is available in normalized_address
+            for key, value in payload.items():
+                # Skip special keys that shouldn't be in normalized_address
+                if key not in ["normalized_address", "address", "errors", "error"]:
+                    if value is not None:  # Include empty strings but skip None
+                        normalized[key] = value
+            
+            # Also create line1, line2, line3 from address_line1, etc. for compatibility
+            if "line1" not in normalized and "address_line1" in normalized:
+                normalized["line1"] = normalized["address_line1"]
+            if "line2" not in normalized and "address_line2" in normalized:
+                normalized["line2"] = normalized["address_line2"]
+            if "line3" not in normalized and "address_line3" in normalized:
+                normalized["line3"] = normalized["address_line3"]
+            
+            # Set normalized_address back to payload
+            payload["normalized_address"] = normalized
+            
+            # Also ensure data is at root level for _get_from_payload to find it
+            # Copy from normalized_address to root if not already present
+            for key in ["line1", "line2", "line3", "address_line1", "address_line2", "address_line3",
+                       "postal_code", "city", "state", "country", "municipality"]:
+                if key not in payload and key in normalized:
+                    payload[key] = normalized[key]
+        
+        # Verify we have some data before creating the object
+        # Check if values are actually present (not just keys)
+        has_data = False
+        if payload and isinstance(payload, dict):
+            # Check root level - look for any non-empty address field
+            for key in ["line1", "address_line1", "city", "postal_code", "formatted_address", "country"]:
+                value = payload.get(key)
+                if value is not None and str(value).strip():
+                    has_data = True
+                    break
+            
+            # Check normalized_address if root level has no data
+            if not has_data:
+                normalized = payload.get("normalized_address", {})
+                if isinstance(normalized, dict):
+                    for key in ["line1", "address_line1", "city", "postal_code", "formatted_address", "country"]:
+                        value = normalized.get(key)
+                        if value is not None and str(value).strip():
+                            has_data = True
+                            break
+            
+            # If we have keys but no data, it might be that values are empty strings
+            # Still create the object so user can see what was returned
+            if not has_data and payload.keys():
+                # Check if we have at least some structure (keys exist)
+                has_structure = any(k in payload for k in ["address_line1", "city", "postal_code", "formatted_address", "normalized_address"])
+                if has_structure:
+                    has_data = True  # Consider it valid if structure exists
+                    # Don't show warning if we have the structure, data might just be empty
+        
+        # Debug: Print payload structure to help diagnose issues
+        # This will help us see what data is actually in the payload
+        if payload and isinstance(payload, dict):
+            # Ensure all address fields are accessible
+            # Make sure normalized_address contains everything
+            if "normalized_address" not in payload or not isinstance(payload.get("normalized_address"), dict):
+                payload["normalized_address"] = {}
+            normalized = payload["normalized_address"]
+            
+            # Copy all address fields to normalized_address if they exist in payload
+            for key in ["address_line1", "address_line2", "address_line3", "city", "postal_code", 
+                       "state", "country", "municipality", "confidence", "relevance",
+                       "backend_used", "backend_reference", "address_reference", "formatted_address"]:
+                if key in payload:
+                    normalized[key] = payload[key]
+            
+            # Also create line1, line2, line3 from address_line1, etc.
+            if "line1" not in normalized and "address_line1" in normalized:
+                normalized["line1"] = normalized["address_line1"]
+            if "line2" not in normalized and "address_line2" in normalized:
+                normalized["line2"] = normalized["address_line2"]
+            if "line3" not in normalized and "address_line3" in normalized:
+                normalized["line3"] = normalized["address_line3"]
+            
+            payload["normalized_address"] = normalized
+        
+        # Always create the object even if data is empty, so user can see the error
         return self._make_lookup_object(
             payload=payload,
             backend_label=backend_label or backend_name or "",
@@ -1047,17 +1377,37 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 all_keys.extend(["type", "class", "osm_key", "osm_value", "place_type"])
         
         for key in all_keys:
-            value = (
-                payload.get(key) 
-                or (normalized.get(key) if isinstance(normalized, dict) else None)
-                or address_dict.get(key)
-            )
-            if value:
-                return str(value)
+            # Check payload first
+            if key in payload:
+                value = payload[key]
+                if value is not None:
+                    return str(value)
+            # Then check normalized_address
+            if isinstance(normalized, dict) and key in normalized:
+                value = normalized[key]
+                if value is not None:
+                    return str(value)
+            # Finally check address dict
+            if key in address_dict:
+                value = address_dict[key]
+                if value is not None:
+                    return str(value)
         return None
 
     @admin.display(description=_("Address Line 1"), ordering="address_line1")
     def address_line1_display(self, obj: AddressLookup):
+        # Debug: Check raw_payload directly
+        if obj.raw_payload:
+            # Try direct access first
+            direct_value = obj.raw_payload.get("address_line1") or obj.raw_payload.get("line1")
+            if direct_value:
+                return str(direct_value)
+            # Try normalized_address
+            normalized = obj.raw_payload.get("normalized_address", {})
+            if isinstance(normalized, dict):
+                normalized_value = normalized.get("address_line1") or normalized.get("line1")
+                if normalized_value:
+                    return str(normalized_value)
         value = self._get_from_payload(obj, "address_line1", "line1")
         return value or "—"
 

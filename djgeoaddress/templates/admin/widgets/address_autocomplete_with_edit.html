@@ -1,5 +1,5 @@
 {% load i18n %}
-<div class="address-autocomplete-wrapper" data-field-name="{{ widget.name }}">
+<div class="address-autocomplete-wrapper" data-field-name="{{ widget.name }}" {% if widget.admin_url %}data-admin-url="{{ widget.admin_url }}"{% endif %}>
     <div class="address-autocomplete-mode">
         <div style="display: flex; align-items: flex-start; gap: 10px;">
             <div style="flex: 1;">
@@ -44,6 +44,28 @@
             <div style="margin-bottom: 10px;">
                 <label style="display: block; margin-bottom: 3px; font-weight: bold;">{% trans "Country (ISO code)" %}</label>
                 {{ widget.subwidgets.7.html|safe }}
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label style="display: block; margin-bottom: 3px; font-weight: bold;">{% trans "Municipality" %}</label>
+                {{ widget.subwidgets.8.html|safe }}
+            </div>
+            {{ widget.subwidgets.9.html|safe }}
+            {{ widget.subwidgets.10.html|safe }}
+            {{ widget.subwidgets.11.html|safe }}
+            {{ widget.subwidgets.12.html|safe }}
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-size: 11px; color: #666;">
+                <div style="margin-bottom: 3px;">
+                    <strong>{% trans "Confidence" %}:</strong> <span class="address-confidence-display">—</span>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <strong>{% trans "Relevance" %}:</strong> <span class="address-relevance-display">—</span>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <strong>{% trans "Backend used" %}:</strong> <span class="address-backend-used-display">—</span>
+                </div>
+                <div style="margin-bottom: 3px;">
+                    <strong>{% trans "Backend reference" %}:</strong> <a href="#" class="address-backend-reference-link" style="color: #417690; text-decoration: none;">—</a>
+                </div>
             </div>
         </div>
     </div>

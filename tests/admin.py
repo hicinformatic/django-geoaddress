@@ -113,6 +113,11 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
             forms.TextInput(attrs={"placeholder": _("City"), "class": "address-city"}),
             forms.TextInput(attrs={"placeholder": _("State / Region"), "class": "address-state"}),
             forms.TextInput(attrs={"placeholder": _("Country (ISO code)"), "class": "address-country"}),
+            forms.TextInput(attrs={"placeholder": _("Municipality"), "class": "address-municipality"}),
+            forms.HiddenInput(attrs={"class": "address-confidence"}),
+            forms.HiddenInput(attrs={"class": "address-relevance"}),
+            forms.HiddenInput(attrs={"class": "address-backend-used"}),
+            forms.HiddenInput(attrs={"class": "address-backend-reference"}),
         ]
         
         widgets = [autocomplete_widget] + address_widgets
@@ -121,7 +126,7 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
     
     def decompress(self, value):
         if not value:
-            return [None, "", "", "", "", "", "", ""]
+            return [None, "", "", "", "", "", "", "", "", None, None, "", ""]
         if isinstance(value, dict):
             address_parts = [
                 value.get("line1") or value.get("address_line1") or "",
@@ -141,6 +146,11 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
                       [" ".join(filter(None, city_parts))] + 
                       state_country)
             )
+            municipality = value.get("municipality") or value.get("extras", {}).get("municipality") or ""
+            confidence = value.get("confidence")
+            relevance = value.get("relevance")
+            backend_used = value.get("backend_used") or value.get("backend") or ""
+            backend_reference = value.get("backend_reference") or value.get("address_reference") or ""
             return [
                 formatted_address,
                 value.get("line1") or value.get("address_line1") or "",
@@ -150,8 +160,13 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
                 value.get("city") or "",
                 value.get("state") or "",
                 value.get("country") or "",
+                municipality,
+                confidence,
+                relevance,
+                backend_used,
+                backend_reference,
             ]
-        return [value, "", "", "", "", "", "", ""]
+        return [value, "", "", "", "", "", "", "", "", None, None, "", ""]
     
     def value_from_datadict(self, data, files, name):
         autocomplete_value = self._autocomplete_widget.value_from_datadict(data, files, name)
@@ -166,10 +181,26 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
             data.get(f"{name}_5", ""),
             data.get(f"{name}_6", ""),
             data.get(f"{name}_7", ""),
+            data.get(f"{name}_8", ""),
+            data.get(f"{name}_9", ""),
+            data.get(f"{name}_10", ""),
+            data.get(f"{name}_11", ""),
+            data.get(f"{name}_12", ""),
         ]
         
-        if not any(address_values):
+        if not any(address_values[:8]):
             return {}
+        
+        confidence_val = address_values[8]
+        relevance_val = address_values[9]
+        try:
+            confidence = float(confidence_val) if confidence_val not in (None, "") else None
+        except (ValueError, TypeError):
+            confidence = None
+        try:
+            relevance = float(relevance_val) if relevance_val not in (None, "") else None
+        except (ValueError, TypeError):
+            relevance = None
         
         address_dict = {
             "line1": address_values[0],
@@ -179,8 +210,13 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
             "city": address_values[4],
             "state": address_values[5],
             "country": address_values[6],
+            "municipality": address_values[7],
+            "confidence": confidence,
+            "relevance": relevance,
+            "backend_used": address_values[10],
+            "backend_reference": address_values[11],
         }
-        return {key: value for key, value in address_dict.items() if value}
+        return {key: value for key, value in address_dict.items() if value not in (None, "")}
     
     def get_context(self, name, value, attrs):
         context = super().get_context(name, value, attrs)
@@ -198,6 +234,13 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
             subwidget_value = decompressed[i] if i < len(decompressed) else ""
             subwidget_html = subwidget.render(f"{name}_{i}", subwidget_value, {})
             context["widget"]["subwidgets"][i]["html"] = subwidget_html
+        
+        # Generate admin_url if we have address data
+        admin_url = None
+        if value and isinstance(value, dict):
+            from djgeoaddress.fields import AddressField
+            admin_url = AddressField.get_admin_url(value)
+        context["widget"]["admin_url"] = admin_url
         
         return context
     

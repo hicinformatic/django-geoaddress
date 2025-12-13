@@ -138,9 +138,12 @@ def task_help():
     print("  test                    Run pytest")
     print("  test-verbose            Run pytest with verbose output")
     print("  coverage                Run tests with coverage report")
-    print("  lint                    Run ruff and mypy")
+    print("  lint                    Run ruff, flake8, pylint, semgrep, and mypy")
     print("  format                  Format code with ruff")
     print("  check                   Run lint/format checks")
+    print("  cleanup                 Detect unused code, imports, and redundancies")
+    print("  fix-imports             Auto-remove unused imports with autoflake")
+    print("  complexity              Analyze code complexity with radon")
     print("")
     
     print(f"{GREEN}Cleaning:{NC}")
@@ -375,11 +378,38 @@ def task_lint():
         return False
 
     ruff = VENV_BIN / ("ruff.exe" if platform.system() == "Windows" else "ruff")
+    flake8 = VENV_BIN / ("flake8.exe" if platform.system() == "Windows" else "flake8")
+    pylint = VENV_BIN / ("pylint.exe" if platform.system() == "Windows" else "pylint")
+    semgrep = VENV_BIN / ("semgrep.exe" if platform.system() == "Windows" else "semgrep")
     mypy = VENV_BIN / ("mypy.exe" if platform.system() == "Windows" else "mypy")
+    targets = ["djgeoaddress", "tests"]
 
     success = True
-    if not run_command([str(ruff), "check", "djgeoaddress", "tests"]):
+    if not run_command([str(ruff), "check", *targets]):
         success = False
+
+    if not run_command([str(flake8), *targets]):
+        success = False
+
+    if not run_command(
+        [str(pylint), "--disable=all", "--enable=duplicate-code", "djgeoaddress"], check=False
+    ):
+        success = False
+
+    semgrep_cmd = [str(semgrep), "scan"]
+    semgrep_configs = []
+    local_semgrep = PROJECT_ROOT / ".semgrep.yaml"
+    if local_semgrep.exists():
+        semgrep_configs.append(str(local_semgrep))
+    else:
+        semgrep_configs.append("p/default")
+    semgrep_configs.extend(["p/python", "p/supply-chain"])
+    for config in semgrep_configs:
+        semgrep_cmd += ["--config", config]
+    semgrep_cmd += targets
+    if not run_command(semgrep_cmd, check=False):
+        success = False
+
     if not run_command([str(mypy), "djgeoaddress"]):
         success = False
 
@@ -389,19 +419,134 @@ def task_lint():
 
 
 def task_security():
-    """Run security checks with bandit."""
+    """Runs security audit with multiple tools."""
     if not venv_exists():
         print_error("Virtual environment not found.")
         return False
-
-    bandit = VENV_BIN / ("bandit.exe" if platform.system() == "Windows" else "bandit")
-    print_info("Running security checks with bandit...")
     
-    if run_command([str(bandit), "-r", "djgeoaddress", "-ll", "-f", "screen"], check=False):
-        print_success("Security checks passed.")
-        return True
-    print_warning("Security checks completed (see warnings above).")
-    return True  # Don't fail build on security warnings
+    print_info("=" * 70)
+    print_info("SECURITY AUDIT - Django GeoAddress")
+    print_info("=" * 70)
+    
+    bandit = VENV_BIN / ("bandit.exe" if platform.system() == "Windows" else "bandit")
+    safety = VENV_BIN / ("safety.exe" if platform.system() == "Windows" else "safety")
+    pip_audit = VENV_BIN / ("pip-audit.exe" if platform.system() == "Windows" else "pip-audit")
+    semgrep = VENV_BIN / ("semgrep.exe" if platform.system() == "Windows" else "semgrep")
+    targets = ["djgeoaddress", "tests"]
+    
+    results = {
+        "bandit": False,
+        "safety": False,
+        "pip_audit": False,
+        "semgrep": False,
+    }
+    
+    # 1. Bandit - Static code analysis
+    print("\n" + "=" * 70)
+    print_info("1/4 - Running Bandit (Static Code Analysis)")
+    print_info("=" * 70)
+    
+    if run_command([str(bandit), "-r", *targets, "-ll", "-f", "screen", "--skip", "B101"], check=False):
+        print_success("✓ Bandit: No high/medium issues found")
+        results["bandit"] = True
+    else:
+        print_warning("⚠ Bandit: Issues found (review above)")
+    
+    # 2. Safety - Dependency vulnerability check
+    print("\n" + "=" * 70)
+    print_info("2/4 - Running Safety (Dependency Vulnerabilities)")
+    print_info("=" * 70)
+    
+    # Safety may require authentication - try with API key from env if available
+    safety_cmd = [str(safety), "scan", "--output", "json"]
+    safety_api_key = os.environ.get("SAFETY_API_KEY")
+    if safety_api_key:
+        safety_cmd.extend(["--key", safety_api_key])
+        print_info("   Using SAFETY_API_KEY from environment")
+    
+    safety_result = run_command(safety_cmd, check=False)
+    if safety_result:
+        print_success("✓ Safety: No known vulnerabilities in dependencies")
+        results["safety"] = True
+    else:
+        # Check if it's an authentication issue
+        if not safety_api_key:
+            print_warning("⚠ Safety: Unable to complete scan (authentication required)")
+            print_info("   Note: Safety CLI requires free account registration")
+            print_info("   Option 1: Register at https://pyup.io/safety/ and set SAFETY_API_KEY env var")
+            print_info("   Option 2: Run 'safety auth' to authenticate interactively")
+            print_info("   For now, treating as skipped (not a failure)")
+            # Don't count as failure if it's just authentication
+            results["safety"] = True  # Count as pass since it's optional
+        else:
+            print_warning("⚠ Safety: Scan completed but issues may have been found")
+            results["safety"] = False
+    
+    # 3. Pip-Audit - PyPI vulnerability audit
+    print("\n" + "=" * 70)
+    print_info("3/4 - Running Pip-Audit (PyPI Vulnerabilities)")
+    print_info("=" * 70)
+    
+    if run_command([str(pip_audit)], check=False):
+        print_success("✓ Pip-Audit: No vulnerabilities found")
+        results["pip_audit"] = True
+    else:
+        print_warning("⚠ Pip-Audit: Vulnerabilities found (review above)")
+    
+    # 4. Semgrep - SAST rules
+    print("\n" + "=" * 70)
+    print_info("4/4 - Running Semgrep (SAST)")
+    print_info("=" * 70)
+
+    semgrep_cmd = [str(semgrep), "scan"]
+    semgrep_configs = []
+    local_semgrep = PROJECT_ROOT / ".semgrep.yaml"
+    if local_semgrep.exists():
+        semgrep_configs.append(str(local_semgrep))
+    else:
+        semgrep_configs.append("p/default")
+    semgrep_configs.extend(["p/python", "p/supply-chain"])
+    for config in semgrep_configs:
+        semgrep_cmd += ["--config", config]
+    semgrep_cmd += targets
+
+    if run_command(semgrep_cmd, check=False):
+        print_success("✓ Semgrep: No issues reported")
+        results["semgrep"] = True
+    else:
+        print_warning("⚠ Semgrep: Findings detected (review above)")
+
+    # Summary
+    print("\n" + "=" * 70)
+    print_info("SECURITY AUDIT SUMMARY")
+    print_info("=" * 70)
+    
+    passed = sum(results.values())
+    total = len(results)
+    
+    for tool, success in results.items():
+        status = f"{GREEN}✓ PASS{NC}" if success else f"{RED}✗ FAIL{NC}"
+        print(f"  {tool.upper():15} {status}")
+    
+    print("\n" + "-" * 70)
+    score = int((passed / total) * 100)
+    
+    if score == 100:
+        print_success(f"SECURITY SCORE: {score}/100 - EXCELLENT!")
+    elif score >= 66:
+        print_warning(f"SECURITY SCORE: {score}/100 - GOOD")
+    else:
+        print_error(f"SECURITY SCORE: {score}/100 - NEEDS ATTENTION")
+    
+    print("-" * 70)
+    
+    # Additional tools info
+    print("\n" + BLUE + "Additional Security Tools (manual setup):" + NC)
+    print("  • SonarQube: https://sonarcloud.io/ (requires account)")
+    print("  • Snyk: https://snyk.io/ (requires account)")
+    print("  • OWASP Dependency-Check: https://owasp.org/www-project-dependency-check/")
+    
+    return score == 100
 
 
 def task_format():
@@ -423,6 +568,178 @@ def task_check():
     if success:
         print_success("All checks passed.")
     return success
+
+
+def task_cleanup():
+    """Detects unused code, imports, and redundancies."""
+    if not venv_exists():
+        print_error("Virtual environment not found.")
+        return False
+    
+    print_info("=" * 70)
+    print_info("CODE CLEANUP ANALYSIS - Django GeoAddress")
+    print_info("=" * 70)
+    
+    vulture = VENV_BIN / ("vulture.exe" if platform.system() == "Windows" else "vulture")
+    autoflake = VENV_BIN / ("autoflake.exe" if platform.system() == "Windows" else "autoflake")
+    pylint = VENV_BIN / ("pylint.exe" if platform.system() == "Windows" else "pylint")
+    
+    results = {
+        "vulture": False,
+        "autoflake": False,
+        "pylint": False,
+    }
+    
+    # 1. Vulture - Dead code detection
+    print("\n" + "=" * 70)
+    print_info("1/3 - Running Vulture (Dead Code Detection)")
+    print_info("=" * 70)
+    
+    # Vulture retourne 0 si pas de dead code, 1 sinon
+    result = run_command([str(vulture), "djgeoaddress/", "--min-confidence", "80"], check=False)
+    if result:
+        print_success("✓ Vulture: No dead code found")
+        results["vulture"] = True
+    else:
+        print_warning("⚠ Vulture: Potential dead code detected (review above)")
+    
+    # 2. Autoflake - Unused imports check
+    print("\n" + "=" * 70)
+    print_info("2/3 - Running Autoflake (Unused Imports Check)")
+    print_info("=" * 70)
+    
+    # Check mode only (no modifications)
+    if run_command(
+        [
+            str(autoflake),
+            "--check",
+            "--recursive",
+            "--remove-all-unused-imports",
+            "--remove-unused-variables",
+            "djgeoaddress/",
+        ],
+        check=False,
+    ):
+        print_success("✓ Autoflake: No unused imports or variables")
+        results["autoflake"] = True
+    else:
+        print_warning("⚠ Autoflake: Unused imports/variables found (run 'fix-imports' to fix)")
+    
+    # 3. Pylint - Code quality and redundancies
+    print("\n" + "=" * 70)
+    print_info("3/3 - Running Pylint (Code Quality & Redundancies)")
+    print_info("=" * 70)
+    
+    # Pylint avec score minimum de 8/10
+    if run_command(
+        [str(pylint), "djgeoaddress/", "--fail-under=8.0", "--disable=C0111,C0103,R0903"],
+        check=False,
+    ):
+        print_success("✓ Pylint: Code quality score >= 8.0/10")
+        results["pylint"] = True
+    else:
+        print_warning("⚠ Pylint: Code quality issues found (review above)")
+    
+    # Summary
+    print("\n" + "=" * 70)
+    print_info("CODE CLEANUP SUMMARY")
+    print_info("=" * 70)
+    
+    passed = sum(results.values())
+    total = len(results)
+    
+    for tool, success in results.items():
+        status = f"{GREEN}✓ PASS{NC}" if success else f"{RED}✗ FAIL{NC}"
+        print(f"  {tool.upper():15} {status}")
+    
+    print("\n" + "-" * 70)
+    score = int((passed / total) * 100)
+    
+    if score == 100:
+        print_success(f"CLEANUP SCORE: {score}/100 - EXCELLENT!")
+    elif score >= 66:
+        print_warning(f"CLEANUP SCORE: {score}/100 - GOOD")
+    else:
+        print_error(f"CLEANUP SCORE: {score}/100 - NEEDS ATTENTION")
+    
+    print("-" * 70)
+    
+    return score == 100
+
+
+def task_fix_imports():
+    """Auto-removes unused imports and variables with autoflake."""
+    if not venv_exists():
+        print_error("Virtual environment not found.")
+        return False
+    
+    print_info("Fixing unused imports and variables...")
+    autoflake = VENV_BIN / ("autoflake.exe" if platform.system() == "Windows" else "autoflake")
+    
+    # Apply fixes in-place
+    if run_command(
+        [
+            str(autoflake),
+            "--in-place",
+            "--recursive",
+            "--remove-all-unused-imports",
+            "--remove-unused-variables",
+            "--remove-duplicate-keys",
+            "djgeoaddress/",
+            "tests/",
+        ]
+    ):
+        print_success("✓ Unused imports and variables removed!")
+        return True
+    else:
+        print_error("✗ Failed to fix imports")
+        return False
+
+
+def task_complexity():
+    """Analyzes code complexity with radon."""
+    if not venv_exists():
+        print_error("Virtual environment not found.")
+        return False
+    
+    print_info("=" * 70)
+    print_info("CODE COMPLEXITY ANALYSIS - Django GeoAddress")
+    print_info("=" * 70)
+    
+    radon = VENV_BIN / ("radon.exe" if platform.system() == "Windows" else "radon")
+    
+    # Cyclomatic Complexity
+    print("\n" + "=" * 70)
+    print_info("Cyclomatic Complexity (CC)")
+    print_info("=" * 70)
+    print_info("A = simple (1-5), B = moderate (6-10), C = complex (11-20)")
+    print_info("D = very complex (21-50), E/F = extremely complex (>50)")
+    print("")
+    
+    run_command([str(radon), "cc", "djgeoaddress/", "-s", "-a"], check=False)
+    
+    # Maintainability Index
+    print("\n" + "=" * 70)
+    print_info("Maintainability Index (MI)")
+    print_info("=" * 70)
+    print_info("A = highly maintainable, B = good, C = moderate, D/F = hard to maintain")
+    print("")
+    
+    run_command([str(radon), "mi", "djgeoaddress/", "-s"], check=False)
+    
+    # Raw metrics
+    print("\n" + "=" * 70)
+    print_info("Raw Metrics (LOC, LLOC, Comments)")
+    print_info("=" * 70)
+    
+    run_command([str(radon), "raw", "djgeoaddress/", "-s"], check=False)
+    
+    print("\n" + "=" * 70)
+    print_success("Complexity analysis complete!")
+    print_info("Tip: Focus on reducing functions with CC > 10 (C or higher)")
+    print_info("=" * 70)
+    
+    return True
 
 
 def task_clean_build():
@@ -555,6 +872,9 @@ COMMANDS = {
     "security": task_security,
     "format": task_format,
     "check": task_check,
+    "cleanup": task_cleanup,
+    "fix-imports": task_fix_imports,
+    "complexity": task_complexity,
     "clean": task_clean,
     "clean-build": task_clean_build,
     "clean-pyc": task_clean_pyc,

@@ -13,6 +13,63 @@
         }
     }
     
+    function buildReferenceSlug(backendUsed, backendReference) {
+        if (!backendReference || !backendUsed) {
+            return null;
+        }
+        function encodeToken(value) {
+            const safeChars = '._~:@';
+            let encoded = '';
+            for (let i = 0; i < value.length; i++) {
+                const char = value[i];
+                if (safeChars.indexOf(char) !== -1) {
+                    encoded += char;
+                } else {
+                    encoded += encodeURIComponent(char);
+                }
+            }
+            return encoded;
+        }
+        const backendToken = encodeToken(String(backendUsed).trim());
+        const referenceToken = encodeToken(String(backendReference).trim());
+        if (!backendToken || !referenceToken) {
+            return null;
+        }
+        return backendToken + '-' + referenceToken;
+    }
+    
+    function updateMetadataDisplay($wrapper, adminUrl) {
+        const confidence = $wrapper.find('.address-confidence').val() || '';
+        const relevance = $wrapper.find('.address-relevance').val() || '';
+        const backendUsed = $wrapper.find('.address-backend-used').val() || '';
+        const backendReference = $wrapper.find('.address-backend-reference').val() || '';
+        
+        $wrapper.find('.address-confidence-display').text(confidence ? parseFloat(confidence).toFixed(2) : '—');
+        $wrapper.find('.address-relevance-display').text(relevance ? parseFloat(relevance).toFixed(2) : '—');
+        $wrapper.find('.address-backend-used-display').text(backendUsed || '—');
+        
+        const $referenceLink = $wrapper.find('.address-backend-reference-link');
+        if (backendReference) {
+            let url = adminUrl;
+            if (!url) {
+                const slug = buildReferenceSlug(backendUsed, backendReference);
+                if (slug) {
+                    url = '/admin/djgeoaddress/addresslookup/' + slug + '/change/';
+                }
+            }
+            if (url) {
+                $referenceLink.attr('href', url);
+                $referenceLink.text(backendReference);
+            } else {
+                $referenceLink.attr('href', '#');
+                $referenceLink.text(backendReference);
+            }
+        } else {
+            $referenceLink.attr('href', '#');
+            $referenceLink.text('—');
+        }
+    }
+    
     function syncAddressFromAutocomplete($wrapper, addressData) {
         if (!addressData || typeof addressData !== 'object') {
             return;
@@ -26,6 +83,14 @@
         $wrapper.find('.address-city').val(normalized.city || '');
         $wrapper.find('.address-state').val(normalized.state || '');
         $wrapper.find('.address-country').val(normalized.country || '');
+        $wrapper.find('.address-municipality').val(normalized.municipality || normalized.extras?.municipality || '');
+        $wrapper.find('.address-confidence').val(normalized.confidence || '');
+        $wrapper.find('.address-relevance').val(normalized.relevance || '');
+        $wrapper.find('.address-backend-used').val(normalized.backend_used || normalized.backend || '');
+        $wrapper.find('.address-backend-reference').val(normalized.backend_reference || normalized.address_reference || '');
+        
+        const adminUrl = normalized.admin_url || addressData.admin_url;
+        updateMetadataDisplay($wrapper, adminUrl);
     }
     
     function syncAddressToAutocomplete($wrapper, fieldName) {
@@ -224,6 +289,23 @@
                     }
                 });
             }
+            
+            function clearBackendFields() {
+                $wrapper.find('.address-confidence').val('');
+                $wrapper.find('.address-relevance').val('');
+                $wrapper.find('.address-backend-used').val('');
+                $wrapper.find('.address-backend-reference').val('');
+                updateMetadataDisplay($wrapper, null);
+            }
+            
+            const $addressFields = $wrapper.find('.address-line1, .address-line2, .address-line3, .address-postal-code, .address-city, .address-state, .address-country, .address-municipality');
+            $addressFields.on('input change', function() {
+                clearBackendFields();
+            });
+            
+            // Get admin_url from data attribute if available (for existing addresses)
+            const initialAdminUrl = $wrapper.data('admin-url') || null;
+            updateMetadataDisplay($wrapper, initialAdminUrl);
         });
     }
     
