@@ -14,19 +14,7 @@ except ImportError:
 
 @require_GET
 def address_autocomplete_admin_view(request):
-    """Admin-specific address autocomplete view (no auth check needed - already in admin).
-    
-    This view provides address search for AddressField autocomplete widgets in the admin.
-    
-    Query parameters:
-        q (required): Search query string
-        country (optional): ISO country code to filter results
-        backend (optional): Specific backend name to use
-        limit (optional): Maximum number of results (default: 10)
-        
-    Returns:
-        JSON response with autocomplete-formatted results
-    """
+    """Admin address autocomplete view for AddressField widgets."""
     query = request.GET.get("q", "").strip()
     if not query:
         return JsonResponse({"results": []})
@@ -77,7 +65,6 @@ def address_autocomplete_admin_view(request):
 
 
 def get_admin_urls():
-    """Get admin URL patterns for address autocomplete."""
     return [
         path(
             "address/autocomplete/",

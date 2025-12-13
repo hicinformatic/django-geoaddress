@@ -16,7 +16,7 @@ def _get_urls_with_autocomplete():
     return custom_urls + original_urls
 
 
-admin.site.get_urls = _get_urls_with_autocomplete
+admin.site.get_urls = _get_urls_with_autocomplete  # type: ignore[method-assign]
 
 __all__ = [
     "AddressBackendInfoAdmin",

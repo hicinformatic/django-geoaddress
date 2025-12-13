@@ -50,10 +50,7 @@ def get_backend_config_for_path(class_path: Optional[str]) -> Optional[Dict[str,
 
 
 def _parse_address_term(term: str) -> Dict[str, Optional[str]]:
-    """Parse an address string to extract components.
-
-    Tries to extract postal_code (5 digits) and city from the term.
-    """
+    """Extract postal_code (5 digits) and city from address string."""
     import re
 
     term = term.strip()
@@ -155,7 +152,7 @@ def build_address_suggestions(
 
 
 def _clean_address_label(label: str) -> str:
-    """Remove warnings and low-level messages from address labels."""
+    """Remove warning messages from address labels."""
     if not label:
         return label
 
@@ -280,7 +277,6 @@ class AddressBackendInfoAdmin(admin.ModelAdmin):
         return JsonResponse({"results": results})
 
     def get_object(self, request, object_id, from_field=None):
-        """Récupère l'objet address backend par son name (qui est maintenant le pk)."""
         return get_object_with_identifier(self, request, object_id, from_field)
 
     # Helpers ----------------------------------------------------------
@@ -291,7 +287,6 @@ class AddressBackendInfoAdmin(admin.ModelAdmin):
         return get_backend_config_for_path(class_path)
 
     def _get_backend_info(self, backend_name: str):
-        """Récupère le backend par son name."""
         try:
             queryset = self.get_queryset(None)
             try:
@@ -520,10 +515,11 @@ class AddressLookupAdmin(admin.ModelAdmin):
         "latitude_display",
         "longitude_display",
         "confidence_display",
+        "relevance_display",
         "backend_used_display",
     ]
     search_fields = ["label", "backend_used", "backend_reference"]
-    ordering = ["label"]
+    ordering = []
     list_per_page = 20
     list_display_links = ("reference_link",)
     change_list_template = "admin/change_list.html"
@@ -535,6 +531,7 @@ class AddressLookupAdmin(admin.ModelAdmin):
         "backend_used_display",
         "backend_reference",
         "confidence_display",
+        "relevance_display",
         "address_line1_display",
         "address_line2_display",
         "address_line3_display",
@@ -556,6 +553,7 @@ class AddressLookupAdmin(admin.ModelAdmin):
                     "backend_used_display",
                     "backend_reference",
                     "confidence_display",
+                    "relevance_display",
                 )
             },
         ),
@@ -646,7 +644,16 @@ class AddressLookupAdmin(admin.ModelAdmin):
                     self._cache_payload(slug_value, raw, obj.backend_used)
                 data.append(obj)
 
-        return AddressLookupQuerySet(model=AddressLookup, data=data)
+        queryset = AddressLookupQuerySet(model=AddressLookup, data=data)
+        
+        # Apply default ordering if no explicit ordering is requested
+        # Django admin uses 'o' parameter for ordering (e.g., "o=1.2" means order by field 1, then 2)
+        ordering_param = request.GET.get("o", "")
+        if not ordering_param:
+            # Default sort by relevance then confidence (descending)
+            queryset = queryset.order_by("-relevance", "-confidence")
+        
+        return queryset
     
     def get_search_results(self, request, queryset, search_term):
         if not search_term:
@@ -784,7 +791,6 @@ class AddressLookupAdmin(admin.ModelAdmin):
                     else:
                         result["longitude"] = None
                     
-                    # Extract confidence
                     confidence = payload.get("confidence") or normalized.get("confidence")
                     if confidence is not None:
                         try:
@@ -793,10 +799,20 @@ class AddressLookupAdmin(admin.ModelAdmin):
                             result["confidence"] = None
                     else:
                         result["confidence"] = None
+                    
+                    relevance = payload.get("relevance") or normalized.get("relevance")
+                    if relevance is not None:
+                        try:
+                            result["relevance"] = float(relevance)
+                        except (TypeError, ValueError):
+                            result["relevance"] = None
+                    else:
+                        result["relevance"] = None
                 else:
                     result["latitude"] = None
                     result["longitude"] = None
                     result["confidence"] = None
+                    result["relevance"] = None
                 
                 # Extract backend display name
                 backend_display = self.backend_used_display(obj)
@@ -890,7 +906,7 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 payload.setdefault("backend_used", backend_identifier)
                 return payload, backend_label
 
-        if pm_get_address_by_reference is None:
+        if get_address_by_reference_fn is None:
             return (
                 {
                     "error": "python-missive helpers are not available.",
@@ -932,7 +948,7 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 return str(value)
         return ""
 
-    @admin.display(description=_("Reference"))
+    @admin.display(description=_("Reference"), ordering="backend_reference")
     def reference_link(self, obj: AddressLookup):
         slug_value = self._get_obj_slug(obj)
         reference = obj.backend_reference or "—"
@@ -1000,28 +1016,17 @@ class AddressLookupAdmin(admin.ModelAdmin):
         )
 
     def _get_from_payload(self, obj: AddressLookup, *keys: str) -> Optional[str]:
-        """Extract value from raw_payload using multiple possible keys.
-        
-        Searches in:
-        1. Direct payload keys
-        2. normalized_address dict keys (if it's a dict)
-        3. address dict keys (for Nominatim-style responses)
-        4. Alternative key names (line1/address_line1, town/city, etc.)
-        """
+        """Extract value from raw_payload using multiple possible keys."""
         if not obj.raw_payload:
             return None
         payload = obj.raw_payload
         normalized_raw = payload.get("normalized_address")
-        # normalized_address can be a dict or a string (formatted address)
         normalized = normalized_raw if isinstance(normalized_raw, dict) else {}
-        # Some backends (like Nominatim) put address components in an "address" dict
         address_dict = payload.get("address") if isinstance(payload.get("address"), dict) else {}
         
-        # Build list of all possible keys to check
         all_keys = []
         for key in keys:
             all_keys.append(key)
-            # Add alternative names
             if key == "address_line1":
                 all_keys.extend(["line1", "street", "street_address", "housenumber"])
             elif key == "address_line2":
@@ -1041,7 +1046,6 @@ class AddressLookupAdmin(admin.ModelAdmin):
             elif key == "address_type":
                 all_keys.extend(["type", "class", "osm_key", "osm_value", "place_type"])
         
-        # Search in payload, normalized_address, and address dict
         for key in all_keys:
             value = (
                 payload.get(key) 
@@ -1052,42 +1056,42 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 return str(value)
         return None
 
-    @admin.display(description=_("Address Line 1"))
+    @admin.display(description=_("Address Line 1"), ordering="address_line1")
     def address_line1_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "address_line1", "line1")
         return value or "—"
 
-    @admin.display(description=_("Address Line 2"))
+    @admin.display(description=_("Address Line 2"), ordering="address_line2")
     def address_line2_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "address_line2", "line2")
         return value or "—"
 
-    @admin.display(description=_("Address Line 3"))
+    @admin.display(description=_("Address Line 3"), ordering="address_line3")
     def address_line3_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "address_line3", "line3")
         return value or "—"
 
-    @admin.display(description=_("City"))
+    @admin.display(description=_("City"), ordering="city")
     def city_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "city")
         return value or "—"
 
-    @admin.display(description=_("Postal Code"))
+    @admin.display(description=_("Postal Code"), ordering="postal_code")
     def postal_code_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "postal_code", "postal_code")
         return value or "—"
 
-    @admin.display(description=_("State"))
+    @admin.display(description=_("State"), ordering="state")
     def state_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "state")
         return value or "—"
 
-    @admin.display(description=_("Country"))
+    @admin.display(description=_("Country"), ordering="country")
     def country_display(self, obj: AddressLookup):
         value = self._get_from_payload(obj, "country")
         return value or "—"
 
-    @admin.display(description=_("Latitude"))
+    @admin.display(description=_("Latitude"), ordering="latitude")
     def latitude_display(self, obj: AddressLookup):
         if not obj.raw_payload:
             return "—"
@@ -1102,7 +1106,7 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 return "—"
         return "—"
 
-    @admin.display(description=_("Longitude"))
+    @admin.display(description=_("Longitude"), ordering="longitude")
     def longitude_display(self, obj: AddressLookup):
         if not obj.raw_payload:
             return "—"
@@ -1117,9 +1121,8 @@ class AddressLookupAdmin(admin.ModelAdmin):
                 return "—"
         return "—"
 
-    @admin.display(description=_("Backend"))
+    @admin.display(description=_("Backend"), ordering="backend_used")
     def backend_used_display(self, obj: AddressLookup):
-        """Display backend name with proper formatting."""
         backend_name = obj.backend_used or ""
         if not backend_name:
             return "—"
@@ -1190,7 +1193,7 @@ class AddressLookupAdmin(admin.ModelAdmin):
                     return formatted
             return backend_name
 
-    @admin.display(description=_("Confidence"))
+    @admin.display(description=_("Confidence"), ordering="confidence")
     def confidence_display(self, obj: AddressLookup):
         if not obj.raw_payload:
             return "—"
@@ -1200,9 +1203,24 @@ class AddressLookupAdmin(admin.ModelAdmin):
         if confidence is not None:
             try:
                 conf_value = float(confidence)
-                return f"{conf_value:.1%}"
+                return f"{conf_value:.1f}%"
             except (TypeError, ValueError):
                 return str(confidence)
+        return "—"
+
+    @admin.display(description=_("Relevance"), ordering="relevance")
+    def relevance_display(self, obj: AddressLookup):
+        if not obj.raw_payload:
+            return "—"
+        payload = obj.raw_payload
+        normalized = payload.get("normalized_address") or {}
+        relevance = payload.get("relevance") or normalized.get("relevance")
+        if relevance is not None:
+            try:
+                rel_value = float(relevance)
+                return f"{rel_value:.1f}%"
+            except (TypeError, ValueError):
+                return str(relevance)
         return "—"
 
     @admin.display(description=_("Raw payload"))

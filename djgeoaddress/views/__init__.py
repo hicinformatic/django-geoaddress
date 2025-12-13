@@ -82,7 +82,7 @@ def _address_autocomplete_view_impl(request):
         country (optional): ISO country code to filter results
         backend (optional): Specific backend name to use
         limit (optional): Maximum number of results (default: 10)
-        min_confidence (optional): Minimum confidence score (0.0-1.0)
+        min_confidence (optional): Minimum confidence score (0.0-1.0, converted to percentage internally)
         
     Returns:
         JSON response with search results

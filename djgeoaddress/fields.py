@@ -188,7 +188,7 @@ class AddressAutocompleteFormField(forms.CharField):
         kwargs.setdefault("required", False)
         super().__init__(**kwargs)
     
-    def to_python(self, value: Any) -> Dict[str, Any]:
+    def to_python(self, value: Any) -> Dict[str, Any]:  # type: ignore[override]
         """Convert string value to address dict."""
         if not value:
             return {}
@@ -237,15 +237,14 @@ class AddressField(models.JSONField):
         choices_form_class: type[forms.Field] | None = None,
         **kwargs: Any,
     ):
-        # Use autocomplete widget by default in admin
+        field_defaults: Dict[str, Any] = {}
         if self.use_autocomplete and form_class is None:
-            field_defaults: Dict[str, Any] = {
+            field_defaults = {
                 "form_class": AddressAutocompleteFormField,
                 "widget": AddressAutocompleteWidget,
             }
-            # encoder/decoder will be removed by AddressAutocompleteFormField.__init__
         else:
-            field_defaults: Dict[str, Any] = {"use_backend": self.use_backend}
+            field_defaults["use_backend"] = self.use_backend
             if form_class is None:
                 field_defaults["form_class"] = AddressFormField
             else:

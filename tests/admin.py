@@ -190,10 +190,8 @@ class AddressAutocompleteWithEditWidget(forms.MultiWidget):
         autocomplete_value = decompressed[0] if decompressed else None
         
         if autocomplete_value and isinstance(autocomplete_value, str) and autocomplete_value.strip():
-            autocomplete_context = self._autocomplete_widget.get_context(name, autocomplete_value, attrs)
             context["autocomplete_widget_html"] = self._autocomplete_widget.render(name, autocomplete_value, attrs)
         else:
-            autocomplete_context = self._autocomplete_widget.get_context(name, None, attrs)
             context["autocomplete_widget_html"] = self._autocomplete_widget.render(name, None, attrs)
         
         for i, subwidget in enumerate(self.widgets[1:], start=1):

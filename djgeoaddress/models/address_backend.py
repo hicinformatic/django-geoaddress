@@ -10,7 +10,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from ..address_backends import build_backend_diagnostic
-from virtualqueryset import InMemoryQuerySet
+from virtualqueryset import InMemoryQuerySet  # type: ignore[import-not-found]
 
 _slug_cleanup = re.compile(r"[^a-z0-9]+")
 
