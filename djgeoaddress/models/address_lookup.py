@@ -19,9 +19,7 @@ class AddressLookupManager(models.Manager):
 
 class AddressLookup(models.Model):
     label = models.CharField(max_length=512, verbose_name=_("Suggested address"))
-    backend_used = models.CharField(
-        max_length=64, blank=True, verbose_name=_("Backend used")
-    )
+    backend_used = models.CharField(max_length=64, blank=True, verbose_name=_("Backend used"))
     backend_reference = models.CharField(
         max_length=128, blank=True, verbose_name=_("Backend reference")
     )

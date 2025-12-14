@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from .address_backend import AddressBackendInfoAdmin
+from .address_lookup import AddressLookupAdmin
 from .views import get_admin_urls
 
 # Extend admin site URLs with custom autocomplete endpoint
@@ -20,4 +21,5 @@ admin.site.get_urls = _get_urls_with_autocomplete  # type: ignore[method-assign]
 
 __all__ = [
     "AddressBackendInfoAdmin",
+    "AddressLookupAdmin",
 ]

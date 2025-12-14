@@ -19,4 +19,3 @@ urlpatterns = [
         name="address-autocomplete",
     ),
 ]
-

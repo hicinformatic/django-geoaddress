@@ -61,9 +61,7 @@ def build_backend_diagnostic(
     check = backend_instance.check_package_and_config()
     packages = check.get("packages", {})
     config_status = check.get("config", {})
-    missing_packages = [
-        pkg for pkg, status in packages.items() if status != "installed"
-    ]
+    missing_packages = [pkg for pkg, status in packages.items() if status != "installed"]
     missing_config = [
         key
         for key in backend_instance.config_keys
@@ -84,9 +82,7 @@ def build_backend_diagnostic(
     return {
         "status": status,
         "backend_name": backend_label,
-        "backend_display_name": getattr(
-            backend_instance, "label", backend_label
-        ),
+        "backend_display_name": getattr(backend_instance, "label", backend_label),
         "documentation_url": backend_instance.documentation_url,
         "site_url": backend_instance.site_url,
         "required_packages": backend_instance.required_packages,
@@ -127,9 +123,7 @@ def _build_backend_payload(
 
     try:
         backend_class = _load_backend_class(class_path)
-        backend_instance = working_instances.get(class_name) or backend_class(
-            config=config
-        )
+        backend_instance = working_instances.get(class_name) or backend_class(config=config)
         diagnostic = build_backend_diagnostic(
             backend_instance,
             config,
@@ -206,9 +200,7 @@ def build_address_backends_payload(
 
     resolved_address_kwargs = _resolve_address_kwargs(address_kwargs)
     resolved_extra_kwargs = (
-        _resolve_extra_kwargs(operation, extra_kwargs)
-        if operation == "reverse_geocode"
-        else {}
+        _resolve_extra_kwargs(operation, extra_kwargs) if operation == "reverse_geocode" else {}
     )
 
     # Build query string for testing

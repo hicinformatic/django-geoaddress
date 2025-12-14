@@ -19,9 +19,9 @@ except ImportError:  # pragma: no cover - optional dependency
 
 class AddressAutocompleteWidget(forms.TextInput):
     """Single input widget with autocomplete for addresses."""
-    
+
     template_name = "django/forms/widgets/text.html"
-    
+
     def __init__(self, attrs: Optional[Dict[str, Any]] = None):
         default_attrs = {
             "class": "address-autocomplete",
@@ -31,17 +31,17 @@ class AddressAutocompleteWidget(forms.TextInput):
         if attrs:
             default_attrs.update(attrs)
         super().__init__(default_attrs)
-    
+
     def build_attrs(self, base_attrs, extra_attrs=None):
         attrs = super().build_attrs(base_attrs, extra_attrs)
         # Add data attribute for autocomplete URL
         try:
-                    attrs["data-autocomplete-url"] = reverse("admin:geoaddress_address_autocomplete")
+            attrs["data-autocomplete-url"] = reverse("admin:geoaddress_address_autocomplete")
         except Exception:
             # Fallback if URL not available
             attrs["data-autocomplete-url"] = "/admin/address/autocomplete/"
         return attrs
-    
+
     class Media:
         css = {
             "all": ("admin/css/autocomplete.css",),
@@ -163,7 +163,13 @@ class AddressFormField(forms.MultiValueField):
         if not backends_config:
             return data
 
-        metadata_fields = ["municipality", "confidence", "relevance", "backend_used", "backend_reference"]
+        metadata_fields = [
+            "municipality",
+            "confidence",
+            "relevance",
+            "backend_used",
+            "backend_reference",
+        ]
         original_metadata = {key: data.get(key) for key in metadata_fields if key in data}
 
         try:
@@ -172,16 +178,14 @@ class AddressFormField(forms.MultiValueField):
                 **data,
             )
         except Exception as exc:  # pragma: no cover - defensive
-            raise ValidationError(
-                _("Address normalization failed: %(error)s") % {"error": exc}
-            )
+            raise ValidationError(_("Address normalization failed: %(error)s") % {"error": exc})
 
         result: Dict[str, Any] = normalized.to_dict()
-        
+
         for key, value in original_metadata.items():
             if value not in (None, "") and key not in result:
                 result[key] = value
-        
+
         if payload.get("errors"):
             raise ValidationError(
                 _("Address validation failed: %(errors)s")
@@ -194,13 +198,19 @@ class AddressFormField(forms.MultiValueField):
     ) -> Dict[str, Any]:
         if not result:
             return result
-        
-        metadata_fields = ["municipality", "confidence", "relevance", "backend_used", "backend_reference"]
+
+        metadata_fields = [
+            "municipality",
+            "confidence",
+            "relevance",
+            "backend_used",
+            "backend_reference",
+        ]
         for key in metadata_fields:
             if key in original_data and original_data[key] not in (None, ""):
                 if key not in result or not result.get(key):
                     result[key] = original_data[key]
-        
+
         if result.get("backend_used"):
             return result
         if not any(original_data.values()):
@@ -213,38 +223,40 @@ class AddressFormField(forms.MultiValueField):
 
 class AddressAutocompleteFormField(forms.CharField):
     """Simple CharField with autocomplete for addresses."""
-    
+
     widget = AddressAutocompleteWidget
-    
+
     def __init__(self, **kwargs: Any):
         # Remove JSONField-specific arguments that CharField doesn't support
         kwargs.pop("encoder", None)
         kwargs.pop("decoder", None)
         kwargs.setdefault("required", False)
         super().__init__(**kwargs)
-    
+
     def to_python(self, value: Any) -> Dict[str, Any]:  # type: ignore[override]
         """Convert string value to address dict."""
         if not value:
             return {}
-        
+
         # If value is already a dict (from hidden field), return it
         if isinstance(value, dict):
             return value
-        
+
         # If it's a string, try to parse it as formatted address
         if isinstance(value, str):
             # For now, just store as line1
             # In production, this would be enhanced with the selected suggestion data
             return {"line1": value.strip()}
-        
+
         return {}
 
 
 class AddressField(models.JSONField):
     """Store structured addresses validated via python-geoaddress backends."""
 
-    def __init__(self, *args: Any, use_backend: bool = True, use_autocomplete: bool = True, **kwargs: Any):
+    def __init__(
+        self, *args: Any, use_backend: bool = True, use_autocomplete: bool = True, **kwargs: Any
+    ):
         kwargs.setdefault("default", dict)
         kwargs.setdefault("blank", True)
         kwargs.setdefault("null", True)
@@ -269,29 +281,31 @@ class AddressField(models.JSONField):
     @staticmethod
     def get_admin_url(address_data: Dict[str, Any]) -> Optional[str]:
         """Generate admin URL for address detail view from address data.
-        
+
         Args:
             address_data: Dictionary containing address data with backend_used and backend_reference
-            
+
         Returns:
             Admin URL string or None if URL cannot be generated
         """
         from urllib.parse import quote
         from django.urls import reverse
-        
+
         backend_used = address_data.get("backend_used") or address_data.get("backend")
-        backend_reference = address_data.get("backend_reference") or address_data.get("address_reference")
-        
+        backend_reference = address_data.get("backend_reference") or address_data.get(
+            "address_reference"
+        )
+
         if not backend_reference or not backend_used:
             return None
-        
+
         backend_identifier = str(backend_used).strip()
         if not backend_identifier:
             return None
-        
+
         _REFERENCE_SAFE_CHARS = "._~:@"
         _SLUG_SEPARATOR = "-"
-        
+
         def encode_token(value: str) -> str:
             result = ""
             for char in value:
@@ -300,15 +314,15 @@ class AddressField(models.JSONField):
                 else:
                     result += quote(char)
             return result
-        
+
         backend_token = encode_token(backend_identifier)
         reference_token = encode_token(str(backend_reference).strip())
-        
+
         if not backend_token or not reference_token:
             return None
-        
+
         slug_value = f"{backend_token}{_SLUG_SEPARATOR}{reference_token}"
-        
+
         try:
             return reverse("admin:djgeoaddress_addresslookup_change", args=[slug_value])
         except Exception:
@@ -332,7 +346,7 @@ class AddressField(models.JSONField):
                 field_defaults["form_class"] = AddressFormField
             else:
                 field_defaults["form_class"] = form_class
-        
+
         if choices_form_class is not None:
             field_defaults["choices_form_class"] = choices_form_class
         field_defaults.update(kwargs)

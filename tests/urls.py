@@ -13,4 +13,3 @@ urlpatterns = [
 admin.site.site_header = "Django GeoAddress - Administration"
 admin.site.site_title = "Django GeoAddress Admin"
 admin.site.index_title = "Welcome to Django GeoAddress"
-

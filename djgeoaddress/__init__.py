@@ -25,4 +25,3 @@ __all__ = [
 
 # Models should NOT be imported at module level (Django not ready yet)
 # Import them as: from djgeoaddress.models import AddressBackendInfo
-

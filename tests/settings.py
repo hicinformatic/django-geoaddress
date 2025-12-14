@@ -108,14 +108,18 @@ GEOADDRESS_BACKENDS = [
         "class": "geoaddress.backends.opencage.OpenCageAddressBackend",
         "config": {
             "OPENCAGE_API_KEY": _env("OPENCAGE_API_KEY", ""),
-            "OPENCAGE_BASE_URL": _env("OPENCAGE_BASE_URL", "https://api.opencagedata.com/geocode/v1"),
+            "OPENCAGE_BASE_URL": _env(
+                "OPENCAGE_BASE_URL", "https://api.opencagedata.com/geocode/v1"
+            ),
         },
     },
     {
         "class": "geoaddress.backends.geocode_earth.GeocodeEarthAddressBackend",
         "config": {
             "GEOCODE_EARTH_API_KEY": _env("GEOCODE_EARTH_API_KEY", ""),
-            "GEOCODE_EARTH_BASE_URL": _env("GEOCODE_EARTH_BASE_URL", "https://api.geocode.earth/v1"),
+            "GEOCODE_EARTH_BASE_URL": _env(
+                "GEOCODE_EARTH_BASE_URL", "https://api.geocode.earth/v1"
+            ),
         },
     },
     {
@@ -155,5 +159,8 @@ GEOADDRESS_BACKENDS = [
 
 # Address autocomplete view configuration
 GEOADDRESS_VIEW_ENABLE = _env("GEOADDRESS_VIEW_ENABLE", "True").lower() in ("true", "1", "yes")
-GEOADDRESS_VIEW_AUTH_ENABLE = _env("GEOADDRESS_VIEW_AUTH_ENABLE", "False").lower() in ("true", "1", "yes")
-
+GEOADDRESS_VIEW_AUTH_ENABLE = _env("GEOADDRESS_VIEW_AUTH_ENABLE", "False").lower() in (
+    "true",
+    "1",
+    "yes",
+)

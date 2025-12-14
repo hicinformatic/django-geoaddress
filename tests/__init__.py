@@ -1,2 +1,1 @@
 """Tests for django-geoaddress."""
-
