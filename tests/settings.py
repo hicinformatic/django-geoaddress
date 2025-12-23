@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "djgeoaddress",
-    "tests",  # Test app with TestLocation model
+    #"tests",  # Test app with TestLocation model
 ]
 
 MIDDLEWARE = [
@@ -79,83 +79,6 @@ USE_TZ = True
 STATIC_URL = "/static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# =============================================================================
-# Address verification backends configuration
-# =============================================================================
-
-GEOADDRESS_BACKENDS = [
-    {
-        "class": "geoaddress.backends.nominatim.NominatimAddressBackend",
-        "config": {
-            "NOMINATIM_USER_AGENT": _env("NOMINATIM_USER_AGENT", "django-geoaddress/1.0"),
-            "NOMINATIM_BASE_URL": _env("NOMINATIM_BASE_URL", "https://nominatim.openstreetmap.org"),
-        },
-    },
-    {
-        "class": "geoaddress.backends.photon.PhotonAddressBackend",
-        "config": {
-            "PHOTON_BASE_URL": _env("PHOTON_BASE_URL", "https://photon.komoot.io"),
-        },
-    },
-    {
-        "class": "geoaddress.backends.locationiq.LocationIQAddressBackend",
-        "config": {
-            "LOCATIONIQ_API_KEY": _env("LOCATIONIQ_API_KEY", ""),
-            "LOCATIONIQ_BASE_URL": _env("LOCATIONIQ_BASE_URL", "https://api.locationiq.com/v1"),
-        },
-    },
-    {
-        "class": "geoaddress.backends.opencage.OpenCageAddressBackend",
-        "config": {
-            "OPENCAGE_API_KEY": _env("OPENCAGE_API_KEY", ""),
-            "OPENCAGE_BASE_URL": _env(
-                "OPENCAGE_BASE_URL", "https://api.opencagedata.com/geocode/v1"
-            ),
-        },
-    },
-    {
-        "class": "geoaddress.backends.geocode_earth.GeocodeEarthAddressBackend",
-        "config": {
-            "GEOCODE_EARTH_API_KEY": _env("GEOCODE_EARTH_API_KEY", ""),
-            "GEOCODE_EARTH_BASE_URL": _env(
-                "GEOCODE_EARTH_BASE_URL", "https://api.geocode.earth/v1"
-            ),
-        },
-    },
-    {
-        "class": "geoaddress.backends.geoapify.GeoapifyAddressBackend",
-        "config": {
-            "GEOAPIFY_API_KEY": _env("GEOAPIFY_API_KEY", ""),
-            "GEOAPIFY_BASE_URL": _env("GEOAPIFY_BASE_URL", "https://api.geoapify.com/v1"),
-        },
-    },
-    {
-        "class": "geoaddress.backends.maps_co.MapsCoAddressBackend",
-        "config": {
-            "MAPS_CO_API_KEY": _env("MAPS_CO_API_KEY", ""),
-            "MAPS_CO_BASE_URL": _env("MAPS_CO_BASE_URL", "https://geocode.maps.co"),
-        },
-    },
-    {
-        "class": "geoaddress.backends.google_maps.GoogleMapsAddressBackend",
-        "config": {
-            "GOOGLE_MAPS_API_KEY": _env("GOOGLE_MAPS_API_KEY", ""),
-        },
-    },
-    {
-        "class": "geoaddress.backends.mapbox.MapboxAddressBackend",
-        "config": {
-            "MAPBOX_ACCESS_TOKEN": _env("MAPBOX_ACCESS_TOKEN", ""),
-        },
-    },
-    {
-        "class": "geoaddress.backends.here.HereAddressBackend",
-        "config": {
-            "HERE_APP_ID": _env("HERE_APP_ID", ""),
-            "HERE_APP_CODE": _env("HERE_APP_CODE", ""),
-        },
-    },
-]
 
 # Address autocomplete view configuration
 GEOADDRESS_VIEW_ENABLE = _env("GEOADDRESS_VIEW_ENABLE", "True").lower() in ("true", "1", "yes")
