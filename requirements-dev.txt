@@ -5,6 +5,7 @@
 -e ../python-providerkit
 -e ../python-geoaddress
 -e ../django-virtualqueryset
+-e ../django-admin-boost
 
 # Include production dependencies
 Django>=3.2

@@ -9,6 +9,13 @@ from virtualqueryset.managers import VirtualManager
 class ProviderManager(VirtualManager):
     """Manager for geoaddress providers."""
 
+    boolean_params = ["are_packages_installed", "are_services_implemented", "is_config_ready"]
+    param_aliases = {
+        "pkg": "are_packages_installed",
+        "svc": "are_services_implemented",
+        "cfg": "is_config_ready",
+    }
+
     def __init__(self, **kwargs: Any):
         """Initialize manager with optional provider discovery options.
 
@@ -18,22 +25,55 @@ class ProviderManager(VirtualManager):
         super().__init__()
         self.provider_kwargs = kwargs
 
-    def get_data(self) -> list[dict[str, Any]]:
+    def search(self, query_string: str = "", **kwargs: Any) -> Any:
+        """Search providers with query_string and optional filters.
+
+        Args:
+            query_string: Search query string
+            **kwargs: Additional arguments (attribute_search, etc.)
+
+        Returns:
+            QuerySet with filtered providers
+        """
+        manager_kwargs = self.provider_kwargs.copy()
+        if query_string:
+            manager_kwargs["query_string"] = query_string
+        if "attribute_search" in kwargs:
+            manager_kwargs["attribute_search"] = kwargs["attribute_search"]
+        manager_kwargs.update({k: v for k, v in kwargs.items() if k != "attribute_search"})
+        
+        search_manager = ProviderManager(**manager_kwargs)
+        search_manager.model = self.model
+        return search_manager.get_queryset()
+
+    def get_data(self) -> list[Any]:
         """Get providers from geoaddress.
 
         Returns:
-            List of provider dictionaries
+            List of ProviderModel instances
         """
+        if not self.model:
+            return []
+        
         try:
             providers = get_address_providers(**self.provider_kwargs)
+            provider_dicts = []
             if isinstance(providers, dict):
-                result = []
                 for provider in providers.values():
-                    result.append(self._provider_to_dict(provider))
-                return result
-            if isinstance(providers, list):
-                return [self._provider_to_dict(p) for p in providers]
-            return []
+                    provider_dicts.append(self._provider_to_dict(provider))
+            elif isinstance(providers, list):
+                provider_dicts = [self._provider_to_dict(p) for p in providers]
+            else:
+                return []
+            
+            objects = []
+            for item in provider_dicts:
+                if isinstance(item, dict):
+                    obj = self.model(**item)
+                    objects.append(obj)
+                elif isinstance(item, self.model):
+                    objects.append(item)
+            return objects
         except Exception:
             return []
 
@@ -49,21 +89,15 @@ class ProviderManager(VirtualManager):
         if isinstance(provider, dict):
             return provider
 
-        is_available = False
-        is_configured = False
-        if hasattr(provider, "is_available"):
-            is_available_val = provider.is_available
-            if callable(is_available_val):
-                is_available = is_available_val()
-            else:
-                is_available = bool(is_available_val)
-
-        if hasattr(provider, "is_configured"):
-            is_configured_val = provider.is_configured
-            if callable(is_configured_val):
-                is_configured = is_configured_val()
-            else:
-                is_configured = bool(is_configured_val)
+        result = {}
+        for param_name in self.boolean_params:
+            result[param_name] = False
+            if hasattr(provider, param_name):
+                param_val = getattr(provider, param_name)
+                if callable(param_val):
+                    result[param_name] = param_val()
+                else:
+                    result[param_name] = bool(param_val)
 
         return {
             "name": getattr(provider, "name", ""),
@@ -76,7 +110,9 @@ class ProviderManager(VirtualManager):
             "config_required": getattr(provider, "config_required", []),
             "config_prefix": getattr(provider, "config_prefix", ""),
             "services": getattr(provider, "services", []),
-            "is_available": is_available,
-            "is_configured": is_configured,
+            "missing_config_keys": getattr(provider, "missing_config_keys", []),
+            "missing_services": getattr(provider, "missing_services", []),
+            "missing_packages": getattr(provider, "missing_packages", []),
+            **result,
         }
 

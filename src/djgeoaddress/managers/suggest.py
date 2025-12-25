@@ -20,13 +20,13 @@ class AddressManager(VirtualManager):
         self.query = query
         self.search_kwargs = kwargs
 
-    def get_data(self) -> list[dict[str, Any]]:
+    def get_data(self) -> list[Any]:
         """Get address suggestions from geoaddress using try_providers_first.
 
         Returns:
-            List of address dictionaries from geoaddress
+            List of AddressModel instances from geoaddress
         """
-        if not self.query:
+        if not self.query or not self.model:
             return []
 
         try:
@@ -45,9 +45,17 @@ class AddressManager(VirtualManager):
                 additional_args=additional_args,
                 **provider_kwargs,
             )
-            if isinstance(result, list):
-                return result
-            return []
+            if not isinstance(result, list):
+                return []
+            
+            objects = []
+            for item in result:
+                if isinstance(item, dict):
+                    obj = self.model(**item)
+                    objects.append(obj)
+                elif isinstance(item, self.model):
+                    objects.append(item)
+            return objects
         except Exception:
             return []
 
