@@ -33,7 +33,8 @@ class AddressModel(VirtualModel):
     relevance = models.FloatField(null=True, blank=True, verbose_name=_("Relevance"), help_text=_("Relevance score (0-100%)"))
     backend = models.CharField(max_length=255, blank=True, verbose_name=_("Backend"), help_text=_("Backend display name"))
     backend_name = models.CharField(max_length=255, blank=True, verbose_name=_("Backend name"), help_text=_("Simple backend name (e.g., nominatim)"))
-    geoaddress_id = models.CharField(max_length=500, blank=True, verbose_name=_("Geoaddress ID"), help_text=_("Combined backend_name-reference ID"))
+    geoaddress_id = models.CharField(max_length=500, blank=True, verbose_name=_("Geoaddress ID"), help_text=_("Combined backend_name-reference ID"), primary_key=True)
+    search_used = models.CharField(max_length=255, blank=True, verbose_name=_("Search used"), help_text=_("Search used to get this address"))
 
     objects = AddressManager()
 
