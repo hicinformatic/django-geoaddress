@@ -23,39 +23,50 @@ def _activate_venv_if_requested() -> None:
     """Activate virtual environment if ENSURE_VIRTUALENV=1 is set."""
     if os.environ.get("ENSURE_VIRTUALENV") != "1":
         return
-    
+
     venv_dir = PROJECT_ROOT / ".venv"
     if not venv_dir.exists():
         return
-    
-    venv_bin = venv_dir / ("Scripts" if platform.system() == "Windows" else "bin")
-    venv_python = venv_bin / ("python.exe" if platform.system() == "Windows" else "python")
-    
-    if venv_python.exists():
-        sys.executable = str(venv_python)
-        path_sep = ";" if platform.system() == "Windows" else ":"
-        current_path = os.environ.get("PATH", "")
-        venv_bin_str = str(venv_bin)
-        if venv_bin_str not in current_path:
-            os.environ["PATH"] = f"{venv_bin_str}{path_sep}{current_path}"
-        
-        if platform.system() == "Windows":
-            site_packages = venv_dir / "Lib" / "site-packages"
+
+    is_windows = platform.system() == "Windows"
+    venv_bin = venv_dir / ("Scripts" if is_windows else "bin")
+    venv_python = venv_bin / ("python.exe" if is_windows else "python")
+
+    if not venv_python.exists():
+        return
+
+    sys.executable = str(venv_python)
+    _update_path(venv_bin, is_windows)
+    _add_site_packages(venv_dir, is_windows)
+
+
+def _update_path(venv_bin: Path, is_windows: bool) -> None:
+    """Update PATH environment variable to include venv bin directory."""
+    path_sep = ";" if is_windows else ":"
+    current_path = os.environ.get("PATH", "")
+    venv_bin_str = str(venv_bin)
+    if venv_bin_str not in current_path:
+        os.environ["PATH"] = f"{venv_bin_str}{path_sep}{current_path}"
+
+
+def _add_site_packages(venv_dir: Path, is_windows: bool) -> None:
+    """Add site-packages directories to Python path."""
+    if is_windows:
+        site_packages = venv_dir / "Lib" / "site-packages"
+        if site_packages.exists():
+            site.addsitedir(str(site_packages))
+    else:
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        for lib_dir in ["lib", "lib64"]:
+            site_packages = venv_dir / lib_dir / f"python{python_version}" / "site-packages"
             if site_packages.exists():
                 site.addsitedir(str(site_packages))
-        else:
-            python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
-            for lib_dir in ["lib", "lib64"]:
-                site_packages = venv_dir / lib_dir / f"python{python_version}" / "site-packages"
-                if site_packages.exists():
-                    site.addsitedir(str(site_packages))
 
 
 def main() -> int:
     """Main entry point."""
-    # Activate venv if ENSURE_VIRTUALENV=1 is set
     _activate_venv_if_requested()
-    
+
     try:
         from qualitybase.services.service import main as service_main
     except ImportError as e:
@@ -70,7 +81,7 @@ def main() -> int:
         print("\nOr if you have additionallib.json, install qualitybase manually:")
         print("     pip install -e ../python-qualitybase")
         return 1
-    
+
     return service_main(PROJECT_ROOT, usage_prefix="./service.py")
 
 

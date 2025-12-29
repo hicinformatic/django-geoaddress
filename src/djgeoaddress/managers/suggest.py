@@ -35,11 +35,10 @@ class AddressManager(VirtualManager):
         """
         if self._cached_data is not None:
             return self._cached_data
-        
+
         if (not self.query and not self.reference) or not self.model:
             self._cached_data = []
             return self._cached_data
-
 
         try:
             if self.backend:
@@ -48,29 +47,21 @@ class AddressManager(VirtualManager):
                 result = get_address_by_reference(self.reference, attribute_search=self.attribute_search)
             else:
                 result = search_addresses(self.query, first=self.first, attribute_search=self.attribute_search)
-            
 
-            print("result", result)
             if isinstance(result, dict):
                 results_list = []
-                for provider_name, provider_result in result.items():
-                    print("provider_name", provider_name)
-                    print("provider_result", provider_result)
+                for provider_result in result.values():
                     if "result" in provider_result:
                         if isinstance(provider_result["result"], list):
                             results_list.extend(provider_result["result"])
                         else:
-                            results_list.extend([provider_result["result"]])
-                    
-                print("results_list", results_list)
+                            results_list.append(provider_result["result"])
                 result = results_list
 
-            print("result 2", result)
-            
             if not isinstance(result, list):
                 self._cached_data = []
                 return self._cached_data
-            
+
             objects = []
             for item in result:
                 if isinstance(item, dict):

@@ -68,8 +68,10 @@ class ProviderAdmin(AdminBoostModel):
         "are_packages_installed",
         "are_services_implemented",
         "is_config_ready",
-        "documentation_url",
-        "site_url",
+        "has_search_addresses",
+        "has_get_address_by_reference",
+        "has_reverse_geocode",
+        "has_get_address_by_osm",
     ]
     list_filter = [PackagesInstalledFilter, ServicesImplementedFilter, ConfigReadyFilter]
     search_fields = ["name", "display_name", "description"]
@@ -78,8 +80,6 @@ class ProviderAdmin(AdminBoostModel):
         "display_name",
         "description",
         "required_packages",
-        "documentation_url",
-        "site_url",
         "config_keys",
         "config_required",
         "config_prefix",
@@ -221,3 +221,51 @@ class ProviderAdmin(AdminBoostModel):
         return self.format_with_help_text(html, _("Missing services"))
     
     missing_services_display.short_description = _("Missing services")
+
+    def has_search_addresses(self, obj):
+        """Check if search_addresses service is implemented."""
+        if not obj or not obj.services:
+            return False
+        if "search_addresses" not in obj.services:
+            return False
+        missing = obj.missing_services or []
+        return "search_addresses" not in missing
+    
+    has_search_addresses.short_description = _("Search addresses")
+    has_search_addresses.boolean = True
+
+    def has_get_address_by_reference(self, obj):
+        """Check if get_address_by_reference service is implemented."""
+        if not obj or not obj.services:
+            return False
+        if "get_address_by_reference" not in obj.services:
+            return False
+        missing = obj.missing_services or []
+        return "get_address_by_reference" not in missing
+    
+    has_get_address_by_reference.short_description = _("By reference")
+    has_get_address_by_reference.boolean = True
+
+    def has_reverse_geocode(self, obj):
+        """Check if reverse_geocode service is implemented."""
+        if not obj or not obj.services:
+            return False
+        if "reverse_geocode" not in obj.services:
+            return False
+        missing = obj.missing_services or []
+        return "reverse_geocode" not in missing
+    
+    has_reverse_geocode.short_description = _("Reverse geocode")
+    has_reverse_geocode.boolean = True
+
+    def has_get_address_by_osm(self, obj):
+        """Check if get_address_by_osm service is implemented."""
+        if not obj or not obj.services:
+            return False
+        if "get_address_by_osm" not in obj.services:
+            return False
+        missing = obj.missing_services or []
+        return "get_address_by_osm" not in missing
+    
+    has_get_address_by_osm.short_description = _("By OSM")
+    has_get_address_by_osm.boolean = True

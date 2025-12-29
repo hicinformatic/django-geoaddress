@@ -45,6 +45,8 @@ class AddressAdmin(admin.ModelAdmin):
         "country",
         "latitude",
         "longitude",
+        "confidence",
+        "relevance",
         "backend_name_display",
     ]
     list_filter = [BackendNameFilter, FirstFilter]
@@ -125,20 +127,37 @@ class AddressAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def get_object(self, request, object_id, from_field=None):
-        """Get address object by geoaddress_id using get_address_by_reference."""
-        print("get_object", object_id)
-        parts = object_id.split("-", 1)
-        if len(parts) != 2:
-            return None
-        backend_name, reference = parts
+    def get_object_by_reference(self, backend, reference):
+        """Get address object by reference."""
         kwargs = {
             "reference": reference,
-            "backend": backend_name,
+            "backend": backend,
         }
-        print("get_object", kwargs)
         manager = AddressManager(**kwargs)
         manager.model = self.model
         qs = manager.get_queryset()
-        print("qs", qs)
         return qs.first()
+
+    def get_object_by_search(self, request, reference, backend):
+        query = request.GET.get("q")
+        if not query:
+            return None
+        kwargs = {
+            "query": query,
+            "backend": backend,
+        }
+        manager = AddressManager(**kwargs)
+        manager.model = self.model
+        qs = manager.get_queryset()
+        return next((obj for obj in qs if obj.reference == reference), None)
+
+    def get_object(self, request, object_id, from_field=None):
+        """Get address object by geoaddress_id using get_address_by_reference."""
+        parts = object_id.split("-", 1)
+        if len(parts) != 2:
+            return None
+        obj = self.get_object_by_reference(parts[0], parts[1])
+        if obj is None:
+            obj = self.get_object_by_search(request, parts[1], parts[0])
+        return obj
+        
