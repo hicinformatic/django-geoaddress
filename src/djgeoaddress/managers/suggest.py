@@ -46,6 +46,7 @@ class AddressManager(VirtualManager):
             if self.reference:
                 result = get_address_by_reference(self.reference, attribute_search=self.attribute_search)
             else:
+                print("here", self.first)
                 result = search_addresses(self.query, first=self.first, attribute_search=self.attribute_search)
 
             if isinstance(result, dict):

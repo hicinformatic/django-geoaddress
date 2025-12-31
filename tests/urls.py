@@ -7,7 +7,7 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
-    #path("djgeoaddress/", include("djgeoaddress.urls")),
+    path("djgeoaddress/", include("djgeoaddress.urls")),
 ]
 
 # admin.site.site_header = "Django GeoAddress - Administration"

@@ -26,6 +26,7 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
+    "djgeoaddress",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -33,8 +34,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_admin_boost",
-    "djgeoaddress",
-    #"tests",  # Test app with TestLocation model
+    "django_extensions",
+    "tests.app",  # Test app with Location model using GeoaddressField
 ]
 
 MIDDLEWARE = [
@@ -52,7 +53,7 @@ ROOT_URLCONF = "tests.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [os.path.join(BASE_DIR, 'templates')],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -64,6 +65,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 DATABASES = {
     "default": {
@@ -82,9 +84,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # Address autocomplete view configuration
-GEOADDRESS_VIEW_ENABLE = _env("GEOADDRESS_VIEW_ENABLE", "True").lower() in ("true", "1", "yes")
-GEOADDRESS_VIEW_AUTH_ENABLE = _env("GEOADDRESS_VIEW_AUTH_ENABLE", "False").lower() in (
-    "true",
-    "1",
-    "yes",
-)
+GEOADDRESS_PROVIDERVIEW = True
+GEOADDRESS_PROVIDERVIEW_AUTH = True
+GEOADDRESS_ADDRESSVIEW = True
+GEOADDRESS_ADDRESSVIEW_AUTH = True

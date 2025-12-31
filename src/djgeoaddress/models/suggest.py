@@ -18,6 +18,7 @@ class AddressModel(VirtualModel):
     address_line3 = models.CharField(max_length=255, blank=True, verbose_name=_("Address line 3"), help_text=_("Additional address info"))
     city = models.CharField(max_length=255, blank=True, verbose_name=_("City"), help_text=_("City name"))
     postal_code = models.CharField(max_length=50, blank=True, verbose_name=_("Postal code"), help_text=_("Postal/ZIP code"))
+    county = models.CharField(max_length=255, blank=True, verbose_name=_("County"), help_text=_("County name"))
     state = models.CharField(max_length=255, blank=True, verbose_name=_("State"), help_text=_("State/region/province"))
     region = models.CharField(max_length=255, blank=True, verbose_name=_("Region"), help_text=_("Region or administrative area"))
     country = models.CharField(max_length=255, blank=True, verbose_name=_("Country"), help_text=_("Country name"))

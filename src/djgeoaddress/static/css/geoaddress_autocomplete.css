@@ -1,0 +1,65 @@
+
+
+.geoaddress-autocomplete-wrapper {
+
+}
+
+
+.geoaddress-autocomplete-hidden {
+    display: none;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 260px;
+}
+
+.geoaddress-autocomplete-wrapper >.geoaddress-autocomplete-field > input {
+    width: 100%;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-results {
+    position: absolute;
+    border: 1px solid;
+    max-width: 260px;
+    max-height: 260px;
+    overflow-y: scroll;
+    background: rgb(100, 100, 100);
+    color: white;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-results > .geoaddress-autocomplete-list {
+    position: relative;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-results > .geoaddress-autocomplete-loading,
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-results > .geoaddress-autocomplete-list > .geoaddress-autocomplete-address {
+    padding: 10px;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-results > .geoaddress-autocomplete-list > .geoaddress-autocomplete-address:hover {
+    background: rgb(130, 130, 130);
+    cursor: pointer;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-data > .geoaddress-data-fieldset {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+
+.geoaddress-autocomplete-wrapper > .geoaddress-data > .geoaddress-data-fieldset > .geoaddress-data-field {
+    min-width: 300px;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-data > .geoaddress-data-fieldset > .geoaddress-data-field > label {
+    width: 100%;
+    text-align: left;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-data > .geoaddress-data-fieldset > .geoaddress-data-field > input {
+    width: 95%;
+}

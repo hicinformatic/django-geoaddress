@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from ..managers.suggest import AddressManager
 from ..models.provider import ProviderModel
 from ..models.suggest import AddressModel
-
+from django_admin_boost import AdminBoostModel, admin_boost_view
 
 class BackendNameFilter(admin.SimpleListFilter):
     title = _("Backend")
@@ -35,9 +35,11 @@ class FirstFilter(admin.SimpleListFilter):
         return queryset
 
 @admin.register(AddressModel)
-class AddressAdmin(admin.ModelAdmin):
+class AddressAdmin(AdminBoostModel):
     """Simple admin for address suggestions."""
-
+    boost_views = [
+        "address_autocomplete_view",
+    ]
     list_display = [
         "text",
         "city",
@@ -47,6 +49,7 @@ class AddressAdmin(admin.ModelAdmin):
         "longitude",
         "confidence",
         "relevance",
+        "region",
         "backend_name_display",
     ]
     list_filter = [BackendNameFilter, FirstFilter]
@@ -83,23 +86,19 @@ class AddressAdmin(admin.ModelAdmin):
         }),
     ]
 
-
-
-    def get_queryset(self, request):
+    def get_queryset(self, request, **kwargs):
         """Get queryset."""
-        kwargs = {
-            "backend": request.GET.get("bck"),
-            "first": bool(request.GET.get("first")),
-            "query": request.GET.get("q"),
-        }
-        manager = AddressManager(**kwargs)
-        manager.model = self.model
-        return manager.get_queryset()
-
-    def get_search_results(self, request, queryset, search_term):
-        """Handle search for VirtualModel using AddressManager."""
-
-        return queryset, False
+        query = kwargs.get("query", request.GET.get("q"))
+        if query:
+            kwargs = {
+                "first": kwargs.get("first") or bool(request.GET.get("first")),
+                "backend": kwargs.get("backend") or request.GET.get("bck"),
+                "query": query,
+            }
+            manager = AddressManager(**kwargs)
+            manager.model = self.model
+            return manager.get_queryset()
+        return AddressModel.objects.none()
 
     def backend_name_display(self, obj):
         """Display backend_name as a link to provider admin."""
@@ -161,3 +160,21 @@ class AddressAdmin(admin.ModelAdmin):
             obj = self.get_object_by_search(request, parts[1], parts[0])
         return obj
         
+    @admin_boost_view("json", "Autocomplete View")
+    def address_autocomplete_view(self, request):
+        """Autocomplete view."""
+        search_term = request.GET.get("term")
+        qs = self.get_queryset(request, first=True, query=search_term)
+        from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
+        return {
+            "results": [
+                {
+                    "id": str(obj.pk),
+                    "text": str(obj),
+                    "data": {field: getattr(obj, field) for field in GEOADDRESS_FIELDS_DESCRIPTIONS} 
+                } for obj in qs
+            ],
+            "pagination": {
+                "more": False,
+            },
+        }

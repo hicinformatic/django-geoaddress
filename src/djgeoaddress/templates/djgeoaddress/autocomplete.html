@@ -1,0 +1,27 @@
+{% load i18n static %}
+<div class="geoaddress-autocomplete-wrapper" data-autocomplete-url="{{ autocomplete_url }}">
+{{ value }}
+    <div class="geoaddress-autocomplete-field geoaddress-autocomplete-hidden">
+        <input type="search" id="{{ name }}_geoaddress_autocomplete" name="{{ name }}_geoaddress_autocomplete" />
+        <img src="{% static 'admin/img/icon-changelink.svg' %}" alt="Edit" class="geoaddress-autocomplete-edit-icon" />
+    </div>
+
+    <div class="geoaddress-autocomplete-results geoaddress-autocomplete-hidden">
+        <span class="geoaddress-autocomplete-loading geoaddress-autocomplete-hidden">{% trans "Searching..." %}</span>
+        <div class="geoaddress-autocomplete-list geoaddress-autocomplete-hidden"></div>
+    </div>
+
+    <div class="geoaddress-data geoaddress-autocomplete-hidden">
+        <div class="geoaddress-data-fieldset">
+            {% for gfield, glabel in geoaddress_fields.items %}
+            <div class="geoaddress-data-field">
+                <label for="{{ gfield }}">{{ glabel }}</label>
+                <input type="text" name="{{ gfield }}_geoaddress_autocomplete" id="{{ gfield }}_geoaddress_autocomplete" />
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <textarea class="" name="{{ name }}" id="{{ name }}" value="{{ value }}" ></textarea>
+
+</div>

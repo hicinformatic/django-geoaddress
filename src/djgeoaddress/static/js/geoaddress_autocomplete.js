@@ -1,0 +1,108 @@
+const config = {
+    cls: {
+        wrapper: 'geoaddress-autocomplete-wrapper',
+        hidden: 'geoaddress-autocomplete-hidden',
+        editIcon: 'geoaddress-autocomplete-edit-icon',
+        dataFields: 'geoaddress-data',
+        results: 'geoaddress-autocomplete-results',
+        list: 'geoaddress-autocomplete-list',
+        loading: 'geoaddress-autocomplete-loading',
+        address: 'geoaddress-autocomplete-address',
+    },
+    suffix: '_geoaddress_autocomplete',
+}
+
+const toggle = (el, show = null) => {
+    const hidden = el.classList.contains(config.cls.hidden);
+    if (show === true || (show === null && hidden)) {
+        el.classList.remove(config.cls.hidden);
+    } else {
+        el.classList.add(config.cls.hidden);
+    }
+}
+
+const fields = {};
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll(`.${config.cls.wrapper}`).forEach(wrapper => {
+        const name = wrapper.getAttribute('name');
+        const dataFields = wrapper.querySelector(`.${config.cls.dataFields}`);
+        
+        const field = {
+            name,
+            url: wrapper.dataset.autocompleteUrl,
+            editIcon: wrapper.querySelector(`.${config.cls.editIcon}`),
+            dataFields,
+            results: wrapper.querySelector(`.${config.cls.results}`),
+            list: wrapper.querySelector(`.${config.cls.list}`),
+            loading: wrapper.querySelector(`.${config.cls.loading}`),
+            searchInput: wrapper.querySelector('input[type="search"]'),
+            dataInputs: Array.from(dataFields.querySelectorAll('input')),
+            textarea: wrapper.querySelector('textarea'),
+            controller: null,
+        };
+        
+        fields[name] = field;
+
+        field.editIcon.addEventListener('click', () => toggle(field.dataFields));
+        
+        field.dataInputs.forEach(input => {
+            input.addEventListener('input', () => {
+                const data = {};
+                field.dataInputs.forEach(inp => {
+                    const key = inp.name.split(config.suffix)[0];
+                    data[key] = inp.value;
+                });
+                field.textarea.value = JSON.stringify(data);
+            });
+        });
+        
+        field.searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            field.list.innerHTML = '';
+            
+            if (query.length < 2) {
+                toggle(field.results, false);
+                return;
+            }
+            
+            if (field.controller) field.controller.abort();
+            field.controller = new AbortController();
+            
+            toggle(field.results, true);
+            toggle(field.loading, true);
+
+            fetch(`${field.url}?${new URLSearchParams({first: 1, format: 'json', q: query})}`, {
+                signal: field.controller.signal
+            })
+                .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+                .then(data => {
+                    data.addresses.forEach(address => {
+                        const addr = document.createElement('div');
+                        addr.className = config.cls.address;
+                        addr.textContent = address.text;
+                        addr.dataset.address = JSON.stringify(address);
+                        addr.addEventListener('click', function() {
+                            const data = JSON.parse(this.dataset.address);
+                            field.textarea.value = this.dataset.address;
+                            field.searchInput.value = address.text;
+                            field.dataInputs.forEach(input => {
+                                const key = input.name.split(config.suffix)[0];
+                                input.value = data[key] || '';
+                            });
+                            toggle(field.results, false);
+                        });
+                        field.list.appendChild(addr);
+                    });
+                    toggle(field.loading, false);
+                    toggle(field.list, true);
+                })
+                .catch(error => {
+                    if (error.name === 'AbortError') return;
+                    console.error('Fetch error:', error);
+                    toggle(field.loading, false);
+                    toggle(field.results, false);
+                });
+        });
+    });
+});
