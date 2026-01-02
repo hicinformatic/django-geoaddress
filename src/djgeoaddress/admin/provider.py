@@ -69,9 +69,13 @@ class ProviderAdmin(AdminBoostModel):
         "are_services_implemented",
         "is_config_ready",
         "has_search_addresses",
+        "cost_search_addresses",
         "has_get_address_by_reference",
+        "cost_get_address_by_reference",
         "has_reverse_geocode",
+        "cost_reverse_geocode",
         "has_get_address_by_osm",
+        "cost_get_address_by_osm",
     ]
     list_filter = [PackagesInstalledFilter, ServicesImplementedFilter, ConfigReadyFilter]
     search_fields = ["name", "display_name", "description"]
@@ -306,3 +310,75 @@ class ProviderAdmin(AdminBoostModel):
 
     has_get_address_by_osm.short_description = _("By OSM")
     has_get_address_by_osm.boolean = True
+
+    def cost_search_addresses(self, obj: ProviderModel | None) -> str:
+        """Display cost for search_addresses service.
+        
+        Args:
+            obj: ProviderModel instance
+            
+        Returns:
+            Cost string or "-" if free/not available
+        """
+        if not obj:
+            return "-"
+        cost = getattr(obj, "cost_search_addresses", None)
+        if cost is None or cost == 0 or cost == "free":
+            return "-"
+        return f"${cost:.5f}"
+
+    cost_search_addresses.short_description = _("Cost (search)")
+
+    def cost_get_address_by_reference(self, obj: ProviderModel | None) -> str:
+        """Display cost for get_address_by_reference service.
+        
+        Args:
+            obj: ProviderModel instance
+            
+        Returns:
+            Cost string or "-" if free/not available
+        """
+        if not obj:
+            return "-"
+        cost = getattr(obj, "cost_get_address_by_reference", None)
+        if cost is None or cost == 0 or cost == "free":
+            return "-"
+        return f"${cost:.5f}"
+
+    cost_get_address_by_reference.short_description = _("Cost (reference)")
+
+    def cost_reverse_geocode(self, obj: ProviderModel | None) -> str:
+        """Display cost for reverse_geocode service.
+        
+        Args:
+            obj: ProviderModel instance
+            
+        Returns:
+            Cost string or "-" if free/not available
+        """
+        if not obj:
+            return "-"
+        cost = getattr(obj, "cost_reverse_geocode", None)
+        if cost is None or cost == 0 or cost == "free":
+            return "-"
+        return f"${cost:.5f}"
+
+    cost_reverse_geocode.short_description = _("Cost (reverse)")
+
+    def cost_get_address_by_osm(self, obj: ProviderModel | None) -> str:
+        """Display cost for get_address_by_osm service.
+        
+        Args:
+            obj: ProviderModel instance
+            
+        Returns:
+            Cost string or "-" if free/not available
+        """
+        if not obj:
+            return "-"
+        cost = getattr(obj, "cost_get_address_by_osm", None)
+        if cost is None or cost == 0 or cost == "free":
+            return "-"
+        return f"${cost:.5f}"
+
+    cost_get_address_by_osm.short_description = _("Cost (OSM)")

@@ -69,7 +69,22 @@ class ProviderManager(VirtualManager):
             objects = []
             for item in provider_dicts:
                 if isinstance(item, dict):
-                    obj = self.model(**item)
+                    # Get all model field names
+                    model_field_names = {
+                        field.name for field in self.model._meta.get_fields()
+                    }
+                    # Separate model fields from dynamic attributes
+                    model_fields = {
+                        k: v for k, v in item.items() if k in model_field_names
+                    }
+                    dynamic_attrs = {
+                        k: v for k, v in item.items() if k not in model_field_names
+                    }
+                    # Create object with only model fields
+                    obj = self.model(**model_fields)
+                    # Set dynamic attributes after object creation
+                    for attr_name, attr_value in dynamic_attrs.items():
+                        setattr(obj, attr_name, attr_value)
                     objects.append(obj)
                 elif isinstance(item, self.model):
                     objects.append(item)
@@ -99,6 +114,17 @@ class ProviderManager(VirtualManager):
                 else:
                     result[param_name] = bool(param_val)
 
+        services = getattr(provider, "services", [])
+        cost_data = {}
+        for service in services:
+            cost_attr = f"cost_{service}"
+            if hasattr(provider, cost_attr):
+                cost_val = getattr(provider, cost_attr)
+                if callable(cost_val):
+                    cost_data[cost_attr] = cost_val()
+                else:
+                    cost_data[cost_attr] = cost_val
+
         return {
             "name": getattr(provider, "name", ""),
             "display_name": getattr(provider, "display_name", ""),
@@ -109,9 +135,10 @@ class ProviderManager(VirtualManager):
             "config_keys": getattr(provider, "config_keys", []),
             "config_required": getattr(provider, "config_required", []),
             "config_prefix": getattr(provider, "config_prefix", ""),
-            "services": getattr(provider, "services", []),
+            "services": services,
             "missing_config_keys": getattr(provider, "missing_config_keys", []),
             "missing_services": getattr(provider, "missing_services", []),
             "missing_packages": getattr(provider, "missing_packages", []),
+            **cost_data,
             **result,
         }
