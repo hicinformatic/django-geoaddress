@@ -2,10 +2,11 @@
 
 from django.http import JsonResponse
 from django.shortcuts import render
-
 from ..models.provider import ProviderModel
+from . import geoaddressview_enabled_and_login
 
 
+@geoaddressview_enabled_and_login("GEOADDRESS_PROVIDERVIEW")
 def list_providers(request):
     """List all providers with their status and available services.
     
@@ -48,3 +49,9 @@ def list_providers(request):
     # HTML format (default)
     return render(request, "djgeoaddress/provider_list.html", {"providers": result})
 
+
+@geoaddressview_enabled_and_login("GEOADDRESS_PROVIDERVIEW")
+def detail_provider(request, provider_name):
+    """Detail provider view."""
+    provider = ProviderModel.objects.get(name=provider_name)
+    return render(request, "djgeoaddress/provider_detail.html", {"provider": provider})

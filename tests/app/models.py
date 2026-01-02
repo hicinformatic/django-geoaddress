@@ -15,14 +15,6 @@ class Location(models.Model):
         verbose_name=_("Name"),
         help_text=_("Location name"),
     )
-    provider = models.ForeignKey(
-        ProviderModel,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name=_("Provider"),
-        help_text=_("Geoaddress provider"),
-    )
     address = GeoaddressField()
     created_at = models.DateTimeField(
         auto_now_add=True,

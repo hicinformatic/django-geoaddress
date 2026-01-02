@@ -13,18 +13,33 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 260px;
+    width: 450px;
 }
 
 .geoaddress-autocomplete-wrapper >.geoaddress-autocomplete-field > input {
     width: 100%;
 }
 
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field > .geoaddress-autocomplete-icons {
+    display: flex;
+    gap: 5px;
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field > .geoaddress-autocomplete-icons img {
+    filter: grayscale(100%);
+}
+
+.geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field > .geoaddress-autocomplete-icons img:hover {
+    cursor: pointer;
+    filter: grayscale(0%);
+}
+
 .geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-results {
     position: absolute;
     border: 1px solid;
-    max-width: 260px;
-    max-height: 260px;
+    max-width: 400px;
+    max-height: 300px;
     overflow-y: scroll;
     background: rgb(100, 100, 100);
     color: white;

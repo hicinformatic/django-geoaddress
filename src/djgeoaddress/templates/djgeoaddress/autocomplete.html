@@ -1,9 +1,19 @@
 {% load i18n static %}
-<div class="geoaddress-autocomplete-wrapper" data-autocomplete-url="{{ autocomplete_url }}">
-{{ value }}
+<div class="geoaddress-autocomplete-wrapper"
+    data-autocomplete-url="{{ autocomplete_url }}"
+    data-redirect-url="{{ redirect_url }}"
+    data-from-url-name="{{ request }}">
+    test: {{ request.url }}
     <div class="geoaddress-autocomplete-field geoaddress-autocomplete-hidden">
-        <input type="search" id="{{ name }}_geoaddress_autocomplete" name="{{ name }}_geoaddress_autocomplete" />
-        <img src="{% static 'admin/img/icon-changelink.svg' %}" alt="Edit" class="geoaddress-autocomplete-edit-icon" />
+        <input type="search" id="{{ name }}_geoaddress_autocomplete" name="{{ name }}_geoaddress_autocomplete" value="{{ search_value }}" />
+
+        <div class="geoaddress-autocomplete-icons">
+            <img src="{% static 'admin/img/icon-changelink.svg' %}" alt="Edit" class="geoaddress-autocomplete-edit-icon" />
+            <a href="#" class="geoaddress-autocomplete-view-link geoaddress-autocomplete-hidden">
+                <img src="{% static 'admin/img/icon-viewlink.svg' %}" alt="View" 
+                class="geoaddress-autocomplete-view-icon" />
+            </a>
+        </div>
     </div>
 
     <div class="geoaddress-autocomplete-results geoaddress-autocomplete-hidden">
@@ -13,15 +23,15 @@
 
     <div class="geoaddress-data geoaddress-autocomplete-hidden">
         <div class="geoaddress-data-fieldset">
-            {% for gfield, glabel in geoaddress_fields.items %}
+            {% for k, v in geoaddress_data.items %}
             <div class="geoaddress-data-field">
-                <label for="{{ gfield }}">{{ glabel }}</label>
-                <input type="text" name="{{ gfield }}_geoaddress_autocomplete" id="{{ gfield }}_geoaddress_autocomplete" />
+                <label for="{{ k }}">{{ v.label }}</label>
+                <input type="text" name="{{ k }}_geoaddress_autocomplete" id="{{ k }}_geoaddress_autocomplete" value="{{ v.value }}" />
             </div>
             {% endfor %}
         </div>
     </div>
 
-    <textarea class="" name="{{ name }}" id="{{ name }}" value="{{ value }}" ></textarea>
+    <textarea class="geoaddress-autocomplete-hidden" name="{{ name }}" id="{{ name }}">{{ value }}</textarea>
 
 </div>

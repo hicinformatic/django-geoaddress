@@ -3,11 +3,24 @@ const config = {
         wrapper: 'geoaddress-autocomplete-wrapper',
         hidden: 'geoaddress-autocomplete-hidden',
         editIcon: 'geoaddress-autocomplete-edit-icon',
+        viewLink: 'geoaddress-autocomplete-view-link',
         dataFields: 'geoaddress-data',
         results: 'geoaddress-autocomplete-results',
         list: 'geoaddress-autocomplete-list',
         loading: 'geoaddress-autocomplete-loading',
         address: 'geoaddress-autocomplete-address',
+        text_fields: [
+            'address_line1',
+            'address_line2',
+            'address_line3',
+            'city',
+            'postal_code',
+            'county',
+            'state',
+            'region',
+            'country_code',
+        ],
+        data: {},
     },
     suffix: '_geoaddress_autocomplete',
 }
@@ -21,7 +34,80 @@ const toggle = (el, show = null) => {
     }
 }
 
+const text = (data) => {
+    return config.cls.text_fields
+    .map(f => data[f])
+    .filter(f => f !== null && f !== undefined && f !== '')
+    .join(', ');
+}
+
+const fill_data = (data, view, redirect) => {
+    console.log(data);
+    console.log(view);
+    if(data.geoaddress_id) {
+        console.log('view');
+        const from_url = window.location.pathname;
+        view.href = `${redirect}?from_url=${from_url}&geoaddress_id=${data.geoaddress_id}`;
+        toggle(view, true);
+    }else{
+        toggle(view, false);
+        view.href = '#';
+    }
+}
+
 const fields = {};
+
+const fetch_addresses = (name, query, first = false) => {
+    const field = fields[name];
+    field.list.innerHTML = '';
+    
+    if (query.length < 2) {
+        toggle(field.results, false);
+        return;
+    }
+    
+    if (field.controller) field.controller.abort();
+    field.controller = new AbortController();
+    
+    toggle(field.results, true);
+    toggle(field.loading, true);
+
+    fetch(`${field.url}?${new URLSearchParams({first: 1, format: 'json', q: query})}`, {
+        signal: field.controller.signal
+    })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+        .then(data => {
+            data.addresses.forEach(address => {
+                const addr = document.createElement('div');
+                addr.className = config.cls.address;
+                addr.textContent = address.text;
+                addr.dataset.address = JSON.stringify(address);
+                addr.addEventListener('click', function() {
+                    const data = JSON.parse(this.dataset.address);
+                    field.textarea.value = this.dataset.address;
+                    field.searchInput.value = address.text;
+                    field.dataInputs.forEach(input => {
+                        const key = input.name.split(config.suffix)[0];
+                        input.value = data[key] || '';
+                    });
+                    fill_data(data, field.viewLink, field.redirectUrl);
+                    field.searchInput.value = address.text;
+                    toggle(field.results, false);
+                });
+                field.list.appendChild(addr);
+            });
+            toggle(field.loading, false);
+            toggle(field.list, true);
+        })
+        .catch(error => {
+            if (error.name === 'AbortError') return;
+            console.error('Fetch error:', error);
+            toggle(field.loading, false);
+            toggle(field.results, false);
+        });
+}
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll(`.${config.cls.wrapper}`).forEach(wrapper => {
@@ -31,7 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const field = {
             name,
             url: wrapper.dataset.autocompleteUrl,
+            redirectUrl: wrapper.dataset.redirectUrl,
             editIcon: wrapper.querySelector(`.${config.cls.editIcon}`),
+            viewLink: wrapper.querySelector(`.${config.cls.viewLink}`),
             dataFields,
             results: wrapper.querySelector(`.${config.cls.results}`),
             list: wrapper.querySelector(`.${config.cls.list}`),
@@ -53,56 +141,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     const key = inp.name.split(config.suffix)[0];
                     data[key] = inp.value;
                 });
+                data.text = text(data);
+                fill_data(data, field.viewLink, field.redirectUrl);
                 field.textarea.value = JSON.stringify(data);
+                field.searchInput.value = data.text;
             });
         });
         
+
+        field.searchInput.addEventListener('focus', function() {
+            const query = this.value.trim();
+            fetch_addresses(name, query, field.first);
+        });
+
         field.searchInput.addEventListener('input', function() {
             const query = this.value.trim();
-            field.list.innerHTML = '';
-            
-            if (query.length < 2) {
-                toggle(field.results, false);
-                return;
-            }
-            
-            if (field.controller) field.controller.abort();
-            field.controller = new AbortController();
-            
-            toggle(field.results, true);
-            toggle(field.loading, true);
-
-            fetch(`${field.url}?${new URLSearchParams({first: 1, format: 'json', q: query})}`, {
-                signal: field.controller.signal
-            })
-                .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
-                .then(data => {
-                    data.addresses.forEach(address => {
-                        const addr = document.createElement('div');
-                        addr.className = config.cls.address;
-                        addr.textContent = address.text;
-                        addr.dataset.address = JSON.stringify(address);
-                        addr.addEventListener('click', function() {
-                            const data = JSON.parse(this.dataset.address);
-                            field.textarea.value = this.dataset.address;
-                            field.searchInput.value = address.text;
-                            field.dataInputs.forEach(input => {
-                                const key = input.name.split(config.suffix)[0];
-                                input.value = data[key] || '';
-                            });
-                            toggle(field.results, false);
-                        });
-                        field.list.appendChild(addr);
-                    });
-                    toggle(field.loading, false);
-                    toggle(field.list, true);
-                })
-                .catch(error => {
-                    if (error.name === 'AbortError') return;
-                    console.error('Fetch error:', error);
-                    toggle(field.loading, false);
-                    toggle(field.results, false);
-                });
+            fetch_addresses(name, query, field.first);
         });
     });
 });

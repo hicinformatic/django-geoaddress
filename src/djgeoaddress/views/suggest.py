@@ -1,13 +1,16 @@
 """Views for address suggestions."""
 
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import resolve, reverse
 
 from ..managers.suggest import AddressManager
 from ..models.provider import ProviderModel
 from ..models.suggest import AddressModel
 
+from . import geoaddressview_enabled_and_login
 
+@geoaddressview_enabled_and_login("GEOADDRESS_ADDRESSVIEW")
 def search_addresses(request):
     """Search addresses with filters.
     
@@ -86,3 +89,32 @@ def search_addresses(request):
     }
     return render(request, "djgeoaddress/address_list.html", context)
 
+
+@geoaddressview_enabled_and_login("GEOADDRESS_ADDRESSVIEW")
+def detail_address(request, geoaddress_id):
+    """Detail address view."""
+    parts = geoaddress_id.split("-", 1)
+    kwargs = {
+        "reference": parts[1],
+        "backend": parts[0],
+    }
+    manager = AddressManager(**kwargs)
+    manager.model = AddressModel
+    qs = manager.get_queryset()
+    address = qs.first()
+    return render(request, "djgeoaddress/address_detail.html", {"address": address})
+
+
+def redirect_to_address(request):
+    """Redirect to address view."""
+    geoaddress_id = request.GET.get("geoaddress_id")
+    if not geoaddress_id:
+        return redirect(reverse('djgeoaddress:list_addresses'))
+    try:
+        from_url = request.GET.get("from_url")
+        url_resolver = resolve(from_url)
+        if url_resolver.app_name == "admin":
+            return redirect(reverse('admin:djgeoaddress_addressmodel_change', args=[geoaddress_id]))
+    except Exception as e:
+        pass
+    return redirect(reverse('djgeoaddress:detail_address', args=[geoaddress_id]))
