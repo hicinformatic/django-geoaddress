@@ -8,6 +8,7 @@ from virtualqueryset.managers import VirtualManager
 
 class AddressManager(VirtualManager):
     """Manager for address suggestions from geoaddress."""
+
     backend: str | None = None
     first: bool = False
 
@@ -44,10 +45,13 @@ class AddressManager(VirtualManager):
             if self.backend:
                 self.attribute_search = {"name": self.backend}
             if self.reference:
-                result = get_address_by_reference(self.reference, attribute_search=self.attribute_search)
+                result = get_address_by_reference(
+                    self.reference, attribute_search=self.attribute_search
+                )
             else:
-                print("here", self.first)
-                result = search_addresses(self.query, first=self.first, attribute_search=self.attribute_search)
+                result = search_addresses(
+                    self.query, first=self.first, attribute_search=self.attribute_search
+                )
 
             if isinstance(result, dict):
                 results_list = []
@@ -89,4 +93,3 @@ class AddressManager(VirtualManager):
         manager = AddressManager(query=query, first=first, **kwargs)
         manager.model = self.model
         return manager.get_queryset()
-

@@ -72,23 +72,24 @@ const fetch_addresses = (name, query, first = false) => {
     toggle(field.results, true);
     toggle(field.loading, true);
 
-    fetch(`${field.url}?${new URLSearchParams({first: 1, format: 'json', q: query})}`, {
-        signal: field.controller.signal
+    fetch(`${field.url}?${new URLSearchParams({first: 1, format: 'json', q: query, from_url: window.location.pathname})}`, {
+        signal: field.controller.signal,
+        redirect: 'follow'
     })
         .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
         .then(data => {
-            data.addresses.forEach(address => {
+            data.results.forEach(address => {
                 const addr = document.createElement('div');
                 addr.className = config.cls.address;
                 addr.textContent = address.text;
                 addr.dataset.address = JSON.stringify(address);
                 addr.addEventListener('click', function() {
-                    const data = JSON.parse(this.dataset.address);
+                    const addr_json = JSON.parse(this.dataset.address);
                     field.textarea.value = this.dataset.address;
                     field.searchInput.value = address.text;
                     field.dataInputs.forEach(input => {
                         const key = input.name.split(config.suffix)[0];
-                        input.value = data[key] || '';
+                        input.value = addr_json[key] || '';
                     });
                     fill_data(data, field.viewLink, field.redirectUrl);
                     field.searchInput.value = address.text;

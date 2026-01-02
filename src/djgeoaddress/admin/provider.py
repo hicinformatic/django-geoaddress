@@ -90,18 +90,51 @@ class ProviderAdmin(AdminBoostModel):
         "missing_config_keys_display",
     ]
     fieldsets = [
-        (None, {
-            "fields": ["name", "display_name", "description", "status_url", "documentation_url", "site_url"],
-        }),
-        (_("Packages"), {
-            "fields": ["required_packages_display", "are_packages_installed", "missing_packages_display"],
-        }),
-        (_("Config"), {
-            "fields": [ "config_prefix_display", "config_keys_display", "config_required_display", "is_config_ready", "missing_config_keys_display"],
-        }),
-        (_("Services"), {
-            "fields": ["services_display", "are_services_implemented", "missing_services_display"],
-        }),
+        (
+            None,
+            {
+                "fields": [
+                    "name",
+                    "display_name",
+                    "description",
+                    "status_url",
+                    "documentation_url",
+                    "site_url",
+                ],
+            },
+        ),
+        (
+            _("Packages"),
+            {
+                "fields": [
+                    "required_packages_display",
+                    "are_packages_installed",
+                    "missing_packages_display",
+                ],
+            },
+        ),
+        (
+            _("Config"),
+            {
+                "fields": [
+                    "config_prefix_display",
+                    "config_keys_display",
+                    "config_required_display",
+                    "is_config_ready",
+                    "missing_config_keys_display",
+                ],
+            },
+        ),
+        (
+            _("Services"),
+            {
+                "fields": [
+                    "services_display",
+                    "are_services_implemented",
+                    "missing_services_display",
+                ],
+            },
+        ),
     ]
 
     def change_fieldsets(self):
@@ -110,15 +143,15 @@ class ProviderAdmin(AdminBoostModel):
     def get_queryset(self, request):
         """Get queryset with query_string and attribute_search parameters from request."""
         from ..managers.provider import ProviderManager
-        
+
         query_string = request.GET.get("q", "").strip()
         attribute_search = {}
-        
+
         for alias, attr_name in ProviderManager.param_aliases.items():
             alias_value = request.GET.get(alias, "").strip()
             if alias_value:
                 attribute_search[attr_name] = alias_value
-        
+
         manager = ProviderModel.objects
         if query_string or attribute_search:
             return manager.search(
@@ -142,7 +175,7 @@ class ProviderAdmin(AdminBoostModel):
             return "-"
         html = self.format_label(obj.config_prefix, label_type="info")
         return self.format_with_help_text(html, _("Configuration prefix"))
-    
+
     config_prefix_display.short_description = _("Config prefix")
 
     def config_keys_display(self, obj):
@@ -152,7 +185,7 @@ class ProviderAdmin(AdminBoostModel):
         labels = [self.format_label(key, label_type="primary") for key in obj.config_keys]
         html = mark_safe(" ".join(labels))
         return self.format_with_help_text(html, _("Configuration keys"))
-    
+
     config_keys_display.short_description = _("Config keys")
 
     def config_required_display(self, obj):
@@ -163,7 +196,7 @@ class ProviderAdmin(AdminBoostModel):
         labels = [self.format_label(key, label_type="warning") for key in obj.config_required]
         html = mark_safe(" ".join(labels))
         return self.format_with_help_text(html, _("Required configuration keys"))
-    
+
     config_required_display.short_description = _("Config required")
     config_required_display.help_text = _("Required configuration keys")
 
@@ -183,10 +216,12 @@ class ProviderAdmin(AdminBoostModel):
         if not obj or not obj.required_packages:
             html = self.format_label("No required packages", label_type="info")
             return self.format_with_help_text(html, _("No required packages"))
-        labels = [self.format_label(package, label_type="primary") for package in obj.required_packages]
+        labels = [
+            self.format_label(package, label_type="primary") for package in obj.required_packages
+        ]
         html = mark_safe(" ".join(labels))
         return self.format_with_help_text(html, _("Required packages"))
-    
+
     required_packages_display.short_description = _("Required packages")
 
     def missing_packages_display(self, obj):
@@ -197,7 +232,7 @@ class ProviderAdmin(AdminBoostModel):
         labels = [self.format_status(key, status=False) for key in obj.missing_packages]
         html = mark_safe(" ".join(labels))
         return self.format_with_help_text(html, _("Missing packages"))
-    
+
     missing_packages_display.short_description = _("Missing packages")
 
     def services_display(self, obj):
@@ -208,7 +243,7 @@ class ProviderAdmin(AdminBoostModel):
         labels = [self.format_label(service, label_type="primary") for service in obj.services]
         html = mark_safe(" ".join(labels))
         return self.format_with_help_text(html, _("Services"))
-    
+
     services_display.short_description = _("Services")
 
     def missing_services_display(self, obj):
@@ -216,10 +251,12 @@ class ProviderAdmin(AdminBoostModel):
         if not obj or not obj.missing_services:
             html = self.format_label("All services are implemented", label_type="success")
             return self.format_with_help_text(html, _("All services are implemented"))
-        labels = [self.format_label(service, label_type="danger") for service in obj.missing_services]
+        labels = [
+            self.format_label(service, label_type="danger") for service in obj.missing_services
+        ]
         html = mark_safe(" ".join(labels))
         return self.format_with_help_text(html, _("Missing services"))
-    
+
     missing_services_display.short_description = _("Missing services")
 
     def has_search_addresses(self, obj):
@@ -230,7 +267,7 @@ class ProviderAdmin(AdminBoostModel):
             return False
         missing = obj.missing_services or []
         return "search_addresses" not in missing
-    
+
     has_search_addresses.short_description = _("Search addresses")
     has_search_addresses.boolean = True
 
@@ -242,7 +279,7 @@ class ProviderAdmin(AdminBoostModel):
             return False
         missing = obj.missing_services or []
         return "get_address_by_reference" not in missing
-    
+
     has_get_address_by_reference.short_description = _("By reference")
     has_get_address_by_reference.boolean = True
 
@@ -254,7 +291,7 @@ class ProviderAdmin(AdminBoostModel):
             return False
         missing = obj.missing_services or []
         return "reverse_geocode" not in missing
-    
+
     has_reverse_geocode.short_description = _("Reverse geocode")
     has_reverse_geocode.boolean = True
 
@@ -266,6 +303,6 @@ class ProviderAdmin(AdminBoostModel):
             return False
         missing = obj.missing_services or []
         return "get_address_by_osm" not in missing
-    
+
     has_get_address_by_osm.short_description = _("By OSM")
     has_get_address_by_osm.boolean = True

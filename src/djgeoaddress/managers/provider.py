@@ -41,7 +41,7 @@ class ProviderManager(VirtualManager):
         if "attribute_search" in kwargs:
             manager_kwargs["attribute_search"] = kwargs["attribute_search"]
         manager_kwargs.update({k: v for k, v in kwargs.items() if k != "attribute_search"})
-        
+
         search_manager = ProviderManager(**manager_kwargs)
         search_manager.model = self.model
         return search_manager.get_queryset()
@@ -54,7 +54,7 @@ class ProviderManager(VirtualManager):
         """
         if not self.model:
             return []
-        
+
         try:
             providers = get_address_providers(**self.provider_kwargs)
             provider_dicts = []
@@ -65,7 +65,7 @@ class ProviderManager(VirtualManager):
                 provider_dicts = [self._provider_to_dict(p) for p in providers]
             else:
                 return []
-            
+
             objects = []
             for item in provider_dicts:
                 if isinstance(item, dict):
@@ -115,4 +115,3 @@ class ProviderManager(VirtualManager):
             "missing_packages": getattr(provider, "missing_packages", []),
             **result,
         }
-
