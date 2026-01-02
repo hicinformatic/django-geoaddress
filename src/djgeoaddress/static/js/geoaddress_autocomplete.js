@@ -42,10 +42,7 @@ const text = (data) => {
 }
 
 const fill_data = (data, view, redirect) => {
-    console.log(data);
-    console.log(view);
     if(data.geoaddress_id) {
-        console.log('view');
         const from_url = window.location.pathname;
         view.href = `${redirect}?from_url=${from_url}&geoaddress_id=${data.geoaddress_id}`;
         toggle(view, true);
