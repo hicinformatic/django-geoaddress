@@ -5,13 +5,43 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "django-geoaddress"
 version = "0.1.0"
-description = "Django integration for address verification and geocoding"
+description = "Django integration for address verification and geocoding. Provides Django fields, widgets, and admin integration for the geoaddress library."
 readme = "README.md"
-authors = [{ name = "Charl", email = "charl@example.com" }]
+authors = [{ name = "Hicinformatic", email = "hicinformatic@gmail.com" }]
 license = { text = "MIT" }
 requires-python = ">=3.10"
+keywords = [
+  "django",
+  "geocoding",
+  "reverse-geocoding",
+  "address",
+  "geolocation",
+  "maps",
+  "django-fields",
+  "django-widgets",
+  "address-autocomplete",
+  "python",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Framework :: Django",
+  "Framework :: Django :: 3.2",
+  "Framework :: Django :: 4.0",
+  "Framework :: Django :: 4.1",
+  "Framework :: Django :: 4.2",
+  "Framework :: Django :: 5.0",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+  "Topic :: Scientific/Engineering :: GIS",
+]
 dependencies = [
     "Django>=3.2",
+    "geoaddress",
 ]
 
 [project.optional-dependencies]
@@ -42,7 +72,13 @@ security = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/django-geoaddress"
+Homepage = "https://github.com/hicinformatic/django-geoaddress"
+Repository = "https://github.com/hicinformatic/django-geoaddress"
+Documentation = "https://github.com/hicinformatic/django-geoaddress#readme"
+Issues = "https://github.com/hicinformatic/django-geoaddress/issues"
+
+[tool.setuptools]
+license-files = ["LICENSE"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
