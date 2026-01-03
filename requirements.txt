@@ -1,4 +1,6 @@
 # Production dependencies
 Django>=3.2
 geoaddress>=0.2.2
+django-admin-boost>=0.1.0
+django-virtualqueryset>=0.1.0
 
