@@ -41,7 +41,7 @@ classifiers = [
 ]
 dependencies = [
     "Django>=3.2",
-    "geoaddress",
+    "geoaddress>=0.2.2",
 ]
 
 [project.optional-dependencies]
