@@ -33,7 +33,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_admin_boost",
+    "django_boosted",
     "django_extensions",
     "tests.app",  # Test app with Location model using GeoaddressField
 ]

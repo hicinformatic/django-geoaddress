@@ -35,9 +35,7 @@ When creating a new provider:
 - [ ] Set `required_packages` if needed
 - [ ] Configure `config_keys`, `config_defaults`, and `config_required`
 - [ ] Implement `search_addresses()` method
-- [ ] Implement `get_address_by_reference()` method
 - [ ] Implement `reverse_geocode()` method
-- [ ] Implement `get_address_by_osm()` method (if supported)
 - [ ] Map provider response to standard geoaddress format
 - [ ] Handle errors gracefully
 - [ ] Add tests for the provider

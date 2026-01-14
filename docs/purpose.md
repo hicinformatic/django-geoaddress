@@ -11,8 +11,6 @@ The library enables you to:
    - Reverse geocoding (coordinates → address)
    - Address validation and normalization
    - Address autocomplete
-   - Get address by reference ID
-   - Get address by OpenStreetMap ID
 
 2. **Manage multiple providers** through ProviderKit:
    - Provider discovery and enumeration
@@ -41,9 +39,7 @@ The library uses a provider-based architecture built on ProviderKit:
 All providers implement the following services:
 
 - **`search_addresses`**: Search for addresses by query string
-- **`get_address_by_reference`**: Get address by provider-specific reference ID
 - **`reverse_geocode`**: Convert coordinates (lat/lon) to address
-- **`get_address_by_osm`**: Get address by OpenStreetMap ID
 
 ### Supported Providers
 

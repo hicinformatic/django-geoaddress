@@ -42,7 +42,7 @@
 
 - **Provider inheritance**: All providers must inherit from `GeoaddressProvider` (which extends `ProviderBase` from ProviderKit)
 - **Required attributes**: Providers must define `name`, `display_name`, and optionally `description`
-- **Service implementation**: Providers must implement the required services: `search_addresses`, `get_address_by_reference`, `reverse_geocode`, `get_address_by_osm`
+- **Service implementation**: Providers must implement the required services: `search_addresses`, `reverse_geocode`
 - **Configuration**: Use `config_keys`, `config_defaults`, and `config_required` for provider configuration
 - **API keys**: Never hardcode API keys, use environment variables with the provider's `config_prefix`
 

@@ -51,7 +51,7 @@ The `providers/` directory contains address provider implementations:
 - **`__init__.py`**: Defines `GeoaddressProvider` base class that extends `ProviderBase` from ProviderKit
 - Each provider file (e.g., `nominatim.py`, `google_maps.py`) implements a specific geocoding service
 - All providers inherit from `GeoaddressProvider` which provides common functionality
-- Providers implement services: `search_addresses`, `get_address_by_reference`, `reverse_geocode`, `get_address_by_osm`
+- Providers implement services: `search_addresses`, `reverse_geocode`
 
 ### Available Providers
 
@@ -74,9 +74,7 @@ The `providers/` directory contains address provider implementations:
 The `helpers.py` module provides:
 - `get_address_providers()`: Get address providers from various sources
 - `search_addresses()`: Search addresses using providers
-- `get_address_by_reference()`: Get address by reference ID
 - `reverse_geocode()`: Reverse geocoding (coordinates → address)
-- `get_address_by_osm()`: Get address by OpenStreetMap ID
 
 ### Package Exports
 

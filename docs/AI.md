@@ -227,16 +227,14 @@ class MyProvider(GeoaddressProvider):
     config_defaults = {"MY_PROVIDER_API_KEY": None}
     config_required = ["MY_PROVIDER_API_KEY"]
     config_prefix = "MY_PROVIDER"
-    services = ["search_addresses", "get_address_by_reference", "reverse_geocode", "get_address_by_osm"]
+    services = ["search_addresses", "reverse_geocode"]
 ```
 
 ### Required Services
 
 All providers must implement:
 - `search_addresses(query: str, **kwargs)`: Search for addresses by query string
-- `get_address_by_reference(reference: str, **kwargs)`: Get address by provider-specific reference ID
 - `reverse_geocode(latitude: float, longitude: float, **kwargs)`: Convert coordinates to address
-- `get_address_by_osm(osm_id: str, osm_type: str, **kwargs)`: Get address by OpenStreetMap ID (if supported)
 
 ### Address Format Standardization
 

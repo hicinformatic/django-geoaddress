@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
-from django_admin_boost import AdminBoostModel, admin_boost_view
+from django_boosted import AdminBoostModel, admin_boost_view
 
 from ..managers.suggest import AddressManager
 from ..models.provider import ProviderModel
@@ -226,7 +226,7 @@ class AddressAdmin(AdminBoostModel):
     def get_object(
         self, request: HttpRequest, object_id: str, from_field: str | None = None
     ) -> AddressModel | None:
-        """Get address object by geoaddress_id using get_address_by_reference.
+        """Get address object by geoaddress_id.
 
         Args:
             request: Django request object

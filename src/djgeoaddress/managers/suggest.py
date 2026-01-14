@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from geoaddress.helpers import search_addresses, get_address_by_reference
+from geoaddress.helpers import search_addresses
 from virtualqueryset.managers import VirtualManager
 
 
@@ -21,7 +21,6 @@ class AddressManager(VirtualManager):
         """
         super().__init__()
         self.query = query
-        self.reference = kwargs.get("reference", None)
         self.search_kwargs = kwargs
         self.first = kwargs.get("first", False)
         self.backend = kwargs.get("backend", None)
@@ -37,21 +36,16 @@ class AddressManager(VirtualManager):
         if self._cached_data is not None:
             return self._cached_data
 
-        if (not self.query and not self.reference) or not self.model:
+        if not self.query or not self.model:
             self._cached_data = []
             return self._cached_data
 
         try:
             if self.backend:
                 self.attribute_search = {"name": self.backend}
-            if self.reference:
-                result = get_address_by_reference(
-                    self.reference, attribute_search=self.attribute_search
-                )
-            else:
-                result = search_addresses(
-                    self.query, first=self.first, attribute_search=self.attribute_search
-                )
+            result = search_addresses(
+                self.query, first=self.first, attribute_search=self.attribute_search
+            )
 
             if isinstance(result, dict):
                 results_list = []
