@@ -70,6 +70,8 @@ class ProviderAdmin(AdminBoostModel):
         "is_config_ready",
         "has_search_addresses",
         "cost_search_addresses",
+        "has_addresses_autocomplete",
+        "cost_addresses_autocomplete",
         "has_reverse_geocode",
         "cost_reverse_geocode",
     ]
@@ -271,6 +273,18 @@ class ProviderAdmin(AdminBoostModel):
     has_search_addresses.short_description = _("Search addresses")
     has_search_addresses.boolean = True
 
+    def has_addresses_autocomplete(self, obj):
+        """Check if addresses_autocomplete service is implemented."""
+        if not obj or not obj.services:
+            return False
+        if "addresses_autocomplete" not in obj.services:
+            return False
+        missing = obj.missing_services or []
+        return "addresses_autocomplete" not in missing
+
+    has_addresses_autocomplete.short_description = _("Autocomplete")
+    has_addresses_autocomplete.boolean = True
+
     def has_reverse_geocode(self, obj):
         """Check if reverse_geocode service is implemented."""
         if not obj or not obj.services:
@@ -300,6 +314,24 @@ class ProviderAdmin(AdminBoostModel):
         return f"${cost:.5f}"
 
     cost_search_addresses.short_description = _("Cost (search)")
+
+    def cost_addresses_autocomplete(self, obj: ProviderModel | None) -> str:
+        """Display cost for addresses_autocomplete service.
+        
+        Args:
+            obj: ProviderModel instance
+            
+        Returns:
+            Cost string or "-" if free/not available
+        """
+        if not obj:
+            return "-"
+        cost = getattr(obj, "cost_addresses_autocomplete", None)
+        if cost is None or cost == 0 or cost == "free":
+            return "-"
+        return f"${cost:.5f}"
+
+    cost_addresses_autocomplete.short_description = _("Cost (autocomplete)")
 
     def cost_reverse_geocode(self, obj: ProviderModel | None) -> str:
         """Display cost for reverse_geocode service.

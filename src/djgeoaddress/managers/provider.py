@@ -2,12 +2,14 @@
 
 from typing import Any
 
+from djproviderkit.managers.provider import BaseProviderManager
 from geoaddress.helpers import get_address_providers
-from virtualqueryset.managers import VirtualManager
 
 
-class ProviderManager(VirtualManager):
+class ProviderManager(BaseProviderManager):
     """Manager for geoaddress providers."""
+
+    package_name = 'geoaddress'
 
     boolean_params = ["are_packages_installed", "are_services_implemented", "is_config_ready"]
     param_aliases = {
@@ -69,20 +71,16 @@ class ProviderManager(VirtualManager):
             objects = []
             for item in provider_dicts:
                 if isinstance(item, dict):
-                    # Get all model field names
                     model_field_names = {
                         field.name for field in self.model._meta.get_fields()
                     }
-                    # Separate model fields from dynamic attributes
                     model_fields = {
                         k: v for k, v in item.items() if k in model_field_names
                     }
                     dynamic_attrs = {
                         k: v for k, v in item.items() if k not in model_field_names
                     }
-                    # Create object with only model fields
                     obj = self.model(**model_fields)
-                    # Set dynamic attributes after object creation
                     for attr_name, attr_value in dynamic_attrs.items():
                         setattr(obj, attr_name, attr_value)
                     objects.append(obj)

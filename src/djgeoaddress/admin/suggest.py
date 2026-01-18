@@ -15,6 +15,9 @@ from django_boosted import AdminBoostModel, admin_boost_view
 from ..managers.suggest import AddressManager
 from ..models.provider import ProviderModel
 from ..models.suggest import AddressModel
+from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
+
+address_list_display = list(GEOADDRESS_FIELDS_DESCRIPTIONS.keys())
 
 
 class BackendNameFilter(admin.SimpleListFilter):
@@ -45,50 +48,16 @@ class FirstFilter(admin.SimpleListFilter):
 
 @admin.register(AddressModel)
 class AddressAdmin(AdminBoostModel):
-    """Simple admin for address suggestions."""
-
     boost_views = [
         "address_autocomplete_view",
     ]
-    list_display = [
-        "text",
-        "city",
-        "postal_code",
-        "country",
-        "latitude",
-        "longitude",
-        "confidence",
-        "relevance",
-        "region",
-        "backend_name_display",
-    ]
+    list_display = address_list_display 
     list_filter = [BackendNameFilter, FirstFilter]
-    search_fields = ["text", "city", "postal_code", "country"]
+    search_fields = ["address_line1", "backend"]
     readonly_fields = [
-        "text",
-        "reference",
         "address_line1",
-        "address_line2",
-        "address_line3",
-        "city",
-        "postal_code",
-        "state",
-        "region",
-        "country",
-        "country_code",
-        "municipality",
-        "neighbourhood",
-        "address_type",
-        "latitude",
-        "longitude",
-        "osm_id",
-        "osm_type",
-        "confidence",
-        "relevance",
         "backend",
-        "backend_name",
-        "geoaddress_id",
-        "search_used",
+
     ]
     fieldsets = [
         (
@@ -96,7 +65,6 @@ class AddressAdmin(AdminBoostModel):
             {
                 "fields": [
                     "text",
-                    "reference",
                     "address_line1",
                     "address_line2",
                     "address_line3",
@@ -118,27 +86,17 @@ class AddressAdmin(AdminBoostModel):
                     "backend",
                     "backend_name",
                     "geoaddress_id",
-                    "search_used",
                 ],
             },
         ),
     ]
 
-    def get_queryset(self, request: HttpRequest, **kwargs: Any) -> Any:
-        """Get queryset with optional query filter.
-
-        Args:
-            request: Django request object
-            **kwargs: Additional keyword arguments
-
-        Returns:
-            QuerySet of AddressModel instances
-        """
-        query = kwargs.get("query", request.GET.get("q"))
+    def get_queryset(self, request: HttpRequest) -> Any:
+        query = request.GET.get("q")
         if query:
             kwargs = {
-                "first": kwargs.get("first") or bool(request.GET.get("first")),
-                "backend": kwargs.get("backend") or request.GET.get("bck"),
+                "first": bool(request.GET.get("first")),
+                "backend": request.GET.get("bck"),
                 "query": query,
             }
             manager = AddressManager(**kwargs)
@@ -146,15 +104,12 @@ class AddressAdmin(AdminBoostModel):
             return manager.get_queryset()
         return AddressModel.objects.none()
 
+    def get_search_results(self, request: HttpRequest, queryset: Any, search_term: str) -> tuple[Any, bool]:
+        if search_term:
+            return queryset, False
+        return queryset, False
+
     def backend_name_display(self, obj: AddressModel | None) -> str:
-        """Display backend_name as a link to provider admin.
-
-        Args:
-            obj: AddressModel instance
-
-        Returns:
-            HTML link or backend name string
-        """
         if not obj or not obj.backend_name:
             return "-"
 
@@ -179,83 +134,33 @@ class AddressAdmin(AdminBoostModel):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    def get_object_by_reference(self, backend: str, reference: str) -> AddressModel | None:
-        """Get address object by reference.
-
-        Args:
-            backend: Backend name
-            reference: Address reference ID
-
-        Returns:
-            AddressModel instance or None
-        """
-        kwargs = {
-            "reference": reference,
-            "backend": backend,
-        }
-        manager = AddressManager(**kwargs)
-        manager.model = self.model
-        qs = manager.get_queryset()
-        return qs.first()
-
-    def get_object_by_search(
-        self, request: HttpRequest, reference: str, backend: str
-    ) -> AddressModel | None:
-        """Get address object by search query.
-
-        Args:
-            request: Django request object
-            reference: Address reference ID
-            backend: Backend name
-
-        Returns:
-            AddressModel instance or None
-        """
-        query = request.GET.get("q")
-        if not query:
-            return None
-        kwargs = {
-            "query": query,
-            "backend": backend,
-        }
-        manager = AddressManager(**kwargs)
-        manager.model = self.model
-        qs = manager.get_queryset()
-        return next((obj for obj in qs if obj.reference == reference), None)
-
     def get_object(
         self, request: HttpRequest, object_id: str, from_field: str | None = None
     ) -> AddressModel | None:
-        """Get address object by geoaddress_id.
-
-        Args:
-            request: Django request object
-            object_id: Combined backend_name-reference ID
-            from_field: Optional field name (unused)
-
-        Returns:
-            AddressModel instance or None
-        """
-        parts = object_id.split("-", 1)
-        if len(parts) != 2:
-            return None
-        obj = self.get_object_by_reference(parts[0], parts[1])
-        if obj is None:
-            obj = self.get_object_by_search(request, parts[1], parts[0])
-        return obj
+        query = request.GET.get("q")
+        if query:
+            kwargs = {
+                "query": query,
+            }
+            manager = AddressManager(**kwargs)
+            manager.model = self.model
+            qs = manager.get_queryset()
+            return next((obj for obj in qs if obj.geoaddress_id == object_id), None)
+        return None
 
     @admin_boost_view("json", "Autocomplete View")
     def address_autocomplete_view(self, request: HttpRequest) -> dict[str, Any]:
-        """Autocomplete view for address suggestions.
-
-        Args:
-            request: Django request object with 'term' query parameter
-
-        Returns:
-            Dictionary with results and pagination info
-        """
         search_term = request.GET.get("term") or request.GET.get("q")
-        qs = self.get_queryset(request, query=search_term, first=True)
+        if search_term:
+            kwargs = {
+                "query": search_term,
+                "first": True,
+            }
+            manager = AddressManager(**kwargs)
+            manager.model = self.model
+            qs = manager.get_queryset()
+        else:
+            qs = AddressModel.objects.none()
         from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
 
         return {
