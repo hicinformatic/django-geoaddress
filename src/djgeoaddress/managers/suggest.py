@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from geoaddress.helpers import addresses_autocomplete
+from geoaddress.helpers import addresses_autocomplete, search_addresses, reverse_geocode
 from virtualqueryset.managers import VirtualManager
 
 
