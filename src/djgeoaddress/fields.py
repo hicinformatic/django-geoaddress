@@ -31,19 +31,21 @@ class GeoaddressAutocompleteWidget(TextInput):
         autocomplete_url = self.get_url()
         try:
             values = json.loads(value) if value else {}
+            
         except (json.JSONDecodeError, TypeError):
             values = {}
+        text_full = values.get("text_full", []) if isinstance(values, dict) else []
         context = {
             "name": name,
             "value": value,
             "attrs": attrs,
-            "search_value": values.get("text") if isinstance(values, dict) else "",
+            "search_value": ", ".join(text_full) if text_full else "",
             "autocomplete_url": autocomplete_url,
             "redirect_url": reverse(self.redirect_url),
             "geoaddress_data": {
                 k: {
                     "value": values.get(k) or "" if isinstance(values, dict) else "",
-                    "label": v,
+                    "label": v.get("label", k),
                 }
                 for k, v in GEOADDRESS_FIELDS_ESSENTIALS.items()
             },

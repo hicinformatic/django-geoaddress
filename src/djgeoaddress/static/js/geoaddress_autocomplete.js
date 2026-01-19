@@ -35,6 +35,7 @@ const toggle = (el, show = null) => {
 }
 
 const text = (data) => {
+    console.log("data", data);
     return config.cls.text_fields
     .map(f => data[f])
     .filter(f => f !== null && f !== undefined && f !== '')
@@ -54,7 +55,7 @@ const fill_data = (data, view, redirect) => {
 
 const fields = {};
 
-const fetch_addresses = (name, query, first = false) => {
+const fetch_addresses = (name, query) => {
     const field = fields[name];
     field.list.innerHTML = '';
     
@@ -69,7 +70,7 @@ const fetch_addresses = (name, query, first = false) => {
     toggle(field.results, true);
     toggle(field.loading, true);
 
-    fetch(`${field.url}?${new URLSearchParams({first: 1, format: 'json', q: query, from_url: window.location.pathname})}`, {
+    fetch(`${field.url}?${new URLSearchParams({format: 'json', q: query, from_url: window.location.pathname})}`, {
         signal: field.controller.signal,
         redirect: 'follow'
     })
@@ -78,18 +79,18 @@ const fetch_addresses = (name, query, first = false) => {
             data.results.forEach(address => {
                 const addr = document.createElement('div');
                 addr.className = config.cls.address;
-                addr.textContent = address.text;
+                addr.textContent = text(address);
                 addr.dataset.address = JSON.stringify(address);
                 addr.addEventListener('click', function() {
                     const addr_json = JSON.parse(this.dataset.address);
                     field.textarea.value = this.dataset.address;
-                    field.searchInput.value = address.text;
+                    field.searchInput.value = text(address);
                     field.dataInputs.forEach(input => {
                         const key = input.name.split(config.suffix)[0];
                         input.value = addr_json[key] || '';
                     });
                     fill_data(data, field.viewLink, field.redirectUrl);
-                    field.searchInput.value = address.text;
+                    field.searchInput.value = text(address);
                     toggle(field.results, false);
                 });
                 field.list.appendChild(addr);
