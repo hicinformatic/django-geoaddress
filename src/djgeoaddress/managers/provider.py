@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from djproviderkit.managers.provider import BaseProviderManager
+from djproviderkit.managers import BaseProviderManager
 from geoaddress.helpers import get_address_providers
 
 
