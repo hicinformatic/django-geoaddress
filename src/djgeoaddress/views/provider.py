@@ -6,7 +6,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.core.exceptions import ObjectDoesNotExist
 
-from ..models.provider import ProviderModel
+from ..models.provider import GeoaddressProviderModel
 from . import geoaddressview_enabled_and_login
 
 
@@ -23,7 +23,7 @@ def list_providers(request: HttpRequest) -> HttpResponse:
     """
     format_type = request.GET.get("format", "html")
 
-    providers = ProviderModel.objects.all()
+    providers = GeoaddressProviderModel.objects.all()
 
     result = []
     for provider in providers:
@@ -66,7 +66,7 @@ def detail_provider(request: HttpRequest, provider_name: str) -> HttpResponse:
         ObjectDoesNotExist: If provider is not found
     """
     try:
-        provider = ProviderModel.objects.get(name=provider_name)
+        provider = GeoaddressProviderModel.objects.get(name=provider_name)
     except ObjectDoesNotExist:
         from django.http import Http404
 

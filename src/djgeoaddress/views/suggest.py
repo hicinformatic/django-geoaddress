@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect
 from django.urls import NoReverseMatch, Resolver404, resolve, reverse
 
 from ..managers.suggest import AddressManager
-from ..models.provider import ProviderModel
+from ..models.provider import GeoaddressProviderModel
 from ..models.suggest import AddressModel
 
 from . import geoaddressview_enabled_and_login

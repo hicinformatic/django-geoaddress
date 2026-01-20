@@ -12,10 +12,8 @@ from django.utils.translation import gettext_lazy as _
 
 from django_boosted import AdminBoostModel, admin_boost_view
 
-from ..managers.suggest import AddressManager
-from ..models.provider import ProviderModel
 from ..models.suggest import AddressModel
-from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS, GEOADDRESS_FIELDS_SEARCH
+from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
 
 
 

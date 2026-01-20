@@ -4,7 +4,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from djgeoaddress.fields import GeoaddressField
-from djgeoaddress.models.provider import ProviderModel
 
 
 class Location(models.Model):

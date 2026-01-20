@@ -1,6 +1,6 @@
 """Models for djgeoaddress."""
 
-from .provider import ProviderModel
+from .provider import GeoaddressProviderModel
 from .suggest import AddressModel, BaseAddressModel
 
-__all__ = ["AddressModel", "BaseAddressModel", "ProviderModel"]
+__all__ = ["AddressModel", "BaseAddressModel", "GeoaddressProviderModel"]

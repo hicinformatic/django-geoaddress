@@ -26,16 +26,12 @@ DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
-    "djgeoaddress",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_boosted",
-    "django_extensions",
-    "tests.app",  # Test app with Location model using GeoaddressField
 ]
 
 MIDDLEWARE = [
@@ -47,8 +43,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-
-ROOT_URLCONF = "tests.urls"
 
 TEMPLATES = [
     {
@@ -82,6 +76,14 @@ USE_TZ = True
 STATIC_URL = "/static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
+ROOT_URLCONF = "tests.urls"
+INSTALLED_APPS += [
+    "django_boosted",
+    "django_extensions",
+    "djgeoaddress",
+    "tests.app",  # Test app with Location model using GeoaddressField
+]
 
 # Address autocomplete view configuration
 GEOADDRESS_PROVIDERVIEW = True
