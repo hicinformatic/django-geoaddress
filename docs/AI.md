@@ -225,7 +225,6 @@ class MyProvider(GeoaddressProvider):
     required_packages = ["requests"]
     config_keys = ["MY_PROVIDER_API_KEY"]
     config_defaults = {"MY_PROVIDER_API_KEY": None}
-    config_required = ["MY_PROVIDER_API_KEY"]
     config_prefix = "MY_PROVIDER"
     services = ["search_addresses", "reverse_geocode"]
 ```
