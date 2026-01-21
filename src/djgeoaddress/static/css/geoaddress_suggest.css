@@ -5,9 +5,28 @@ body {
     padding: 20px;
     background-color: #f5f5f5;
 }
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
 h1 {
     color: #333;
-    margin-bottom: 30px;
+    margin: 0;
+}
+.header-links {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+.header-link {
+    color: #0066cc;
+    text-decoration: none;
+    font-size: 0.9em;
+}
+.header-link:hover {
+    text-decoration: underline;
 }
 .search-form {
     background: white;
@@ -24,6 +43,8 @@ h1 {
     margin-bottom: 5px;
     font-weight: 500;
     color: #555;
+    min-height: 20px;
+    line-height: 20px;
 }
 .form-group input,
 .form-group select {
@@ -32,19 +53,29 @@ h1 {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    height: 38px;
+    box-sizing: border-box;
 }
 .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 2fr 1fr auto;
     gap: 15px;
+    align-items: end;
 }
 .form-checkbox {
     display: flex;
     align-items: center;
     gap: 8px;
+    height: 38px;
 }
 .form-checkbox input {
     width: auto;
+}
+.form-submit-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
 }
 button {
     background-color: #0066cc;
@@ -58,15 +89,9 @@ button {
 button:hover {
     background-color: #0052a3;
 }
-.json-link {
-    float: right;
-    color: #0066cc;
-    text-decoration: none;
+.results-count {
+    color: #666;
     font-size: 0.9em;
-    margin-top: 5px;
-}
-.json-link:hover {
-    text-decoration: underline;
 }
 .results-info {
     background: white;
@@ -76,12 +101,31 @@ button:hover {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     color: #666;
 }
+.address-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+.address-card-link:hover {
+    text-decoration: none;
+}
+.address-card-link:visited {
+    text-decoration: none;
+}
+.address-card-link:active {
+    text-decoration: none;
+}
 .address-card {
     background: white;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 15px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+}
+.address-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 .address-header {
     font-size: 1.1em;
@@ -104,8 +148,15 @@ button:hover {
     display: block;
     margin-bottom: 3px;
 }
+.field-help {
+    font-size: 0.8em;
+    color: #999;
+    cursor: help;
+    margin-left: 5px;
+}
 .address-coords {
     display: flex;
+    align-items: center;
     gap: 15px;
     margin-top: 10px;
     padding-top: 10px;
@@ -116,13 +167,25 @@ button:hover {
     color: #666;
 }
 .backend-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     background-color: #e7f3ff;
     color: #0066cc;
     padding: 4px 10px;
     border-radius: 4px;
     font-size: 0.85em;
-    margin-top: 10px;
+    height: fit-content;
+}
+.address-osm {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+.osm-field {
+    font-size: 0.85em;
+    color: #666;
 }
 .no-results {
     background: white;

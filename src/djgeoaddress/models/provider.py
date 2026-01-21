@@ -31,6 +31,7 @@ class GeoaddressProviderModel(VirtualModel):
         app_label = 'djgeoaddress'
         verbose_name = _("Geoaddress Provider")
         verbose_name_plural = _("Geoaddress Providers")
+        ordering = ['-priority', 'name']
 
     def __str__(self) -> str:
         return self.display_name or self.name

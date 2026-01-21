@@ -9,10 +9,12 @@ from .views.suggest import (
     redirect_to_address_list,
     redirect_to_address,
 )
+from .views.index import index
 
 app_name = "djgeoaddress"
 
 urlpatterns = [
+    path("", index, name="index"),
     path("providers/<str:provider_name>/", detail_provider, name="detail_provider"),
     path("providers/", list_providers, name="list_providers"),
     path("suggest/redirect-to-address-list/", redirect_to_address_list, name="redirect_to_address_list"),

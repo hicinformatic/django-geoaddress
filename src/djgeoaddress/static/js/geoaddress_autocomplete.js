@@ -70,13 +70,13 @@ const fetch_addresses = (name, query) => {
     toggle(field.results, true);
     toggle(field.loading, true);
 
-    fetch(`${field.url}?${new URLSearchParams({format: 'json', q: query, from_url: window.location.pathname})}`, {
+    fetch(`${field.url}?${new URLSearchParams({format: 'json', first: 1, q: query, from_url: window.location.pathname})}`, {
         signal: field.controller.signal,
         redirect: 'follow'
     })
         .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
         .then(data => {
-            data.results.forEach(address => {
+            data.addresses.forEach(address => {
                 const addr = document.createElement('div');
                 addr.className = config.cls.address;
                 addr.textContent = text(address);
@@ -150,12 +150,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         field.searchInput.addEventListener('focus', function() {
             const query = this.value.trim();
-            fetch_addresses(name, query, field.first);
+            fetch_addresses(name, query);
         });
 
         field.searchInput.addEventListener('input', function() {
             const query = this.value.trim();
-            fetch_addresses(name, query, field.first);
+            fetch_addresses(name, query);
         });
+
     });
 });

@@ -6,6 +6,8 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import NoReverseMatch, Resolver404, resolve, reverse
 
+from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
+
 from ..managers.suggest import AddressManager
 from ..models.provider import GeoaddressProviderModel
 from ..models.suggest import AddressModel
@@ -32,65 +34,43 @@ def search_addresses(request: HttpRequest) -> HttpResponse:
     first_param = request.GET.get("first", "")
     first = first_param == "1" if first_param else False
 
-    # Prepare manager kwargs
-    kwargs = {}
-    if backend:
-        kwargs["backend"] = backend
-    if first:
-        kwargs["first"] = first
+    # Get addresses using the same method as admin
+    provider_response_times = {}
+    provider_response_times_by_display_name = {}
+    addresses = []
 
-    # Get addresses using AddressManager
-    manager = AddressManager(query=query if query else None, **kwargs)
-    manager.model = AddressModel
-    addresses = manager.get_queryset()
-
-    # Convert to list of dicts for JSON response
-    result = []
-    for address in addresses:
-        address_data = {
-            "text": address.text,
-            "reference": address.reference,
-            "address_line1": address.address_line1,
-            "address_line2": address.address_line2,
-            "address_line3": address.address_line3,
-            "city": address.city,
-            "postal_code": address.postal_code,
-            "state": address.state,
-            "region": address.region,
-            "country": address.country,
-            "country_code": address.country_code,
-            "municipality": address.municipality,
-            "neighbourhood": address.neighbourhood,
-            "address_type": address.address_type,
-            "latitude": address.latitude,
-            "longitude": address.longitude,
-            "osm_id": address.osm_id,
-            "osm_type": address.osm_type,
-            "confidence": address.confidence,
-            "relevance": address.relevance,
-            "backend": address.backend,
-            "backend_name": address.backend_name,
-            "geoaddress_id": address.geoaddress_id,
-            "search_used": address.search_used,
-        }
-        result.append(address_data)
+    if query:
+        kwargs = {"first": first}
+        if backend:
+            kwargs["attribute_search"] = {"name": backend}
+        addresses = AddressModel.objects.addresses_autocomplete(query=query, **kwargs)
+        
+    times = AddressModel.objects.get_response_times('addresses_autocomplete')
 
     if format_type == "json":
+        result = []
+        for address in addresses:
+            address_data = {field: getattr(address, field, None) for field in GEOADDRESS_FIELDS_DESCRIPTIONS}
+            address_data["times"] = times.get(address.backend, 0)
+            result.append(address_data)
+            
         return JsonResponse(
             {"addresses": result, "count": len(result)}, json_dumps_params={"ensure_ascii": False}
         )
 
     # HTML format (default)
     # Get providers list for backend filter
-    providers = ProviderModel.objects.all()
+    providers = GeoaddressProviderModel.objects.all()
 
     context = {
-        "results": result,
+        "addresses": addresses,  # Pass the queryset directly like admin does
         "query": query,
         "backend": backend,
         "first": first,
-        "count": len(result),
+        "count": len(addresses),
         "providers": providers,
+        "times": times,
+
     }
     return render(request, "djgeoaddress/address_list.html", context)
 
@@ -101,24 +81,19 @@ def detail_address(request: HttpRequest, geoaddress_id: str) -> HttpResponse:
 
     Args:
         request: Django request object
-        geoaddress_id: Combined backend_name-reference ID
+        geoaddress_id: Combined backend_name-latitude:longitude ID (format: name_lat:lon)
 
     Returns:
         HTML response with address details
     """
-    parts = geoaddress_id.split("-", 1)
-    if len(parts) != 2:
-        from django.http import Http404
-
-        raise Http404("Invalid geoaddress ID format")
-    kwargs = {
-        "reference": parts[1],
-        "backend": parts[0],
-    }
-    manager = AddressManager(**kwargs)
-    manager.model = AddressModel
-    qs = manager.get_queryset()
+    # Use reverse_geocode like the admin does
+    qs = AddressModel.objects.reverse_geocode(geoaddress_id=geoaddress_id)
     address = qs.first()
+    
+    if not address:
+        from django.http import Http404
+        raise Http404("Address not found")
+    
     return render(request, "djgeoaddress/address_detail.html", {"address": address})
 
 

@@ -10,6 +10,19 @@ from django.urls import reverse
 from geoaddress import GEOADDRESS_FIELDS_ESSENTIALS
 
 
+class GeoaddressValue(dict):
+    """Simple wrapper to format address as string."""
+
+    def __init__(self, data: dict[str, Any] | None = None):
+        """Initialize with address data."""
+        super().__init__(data or {})
+
+    def __str__(self) -> str:
+        """Format address using GEOADDRESS_FIELDS_ESSENTIALS order."""
+        parts = [str(self.get(k)) for k in GEOADDRESS_FIELDS_ESSENTIALS.keys() if self.get(k)]
+        return ", ".join(parts)
+
+
 class GeoaddressAutocompleteWidget(TextInput):
     """Widget to store geoaddress data via AddressModel with autocomplete."""
 
@@ -34,7 +47,15 @@ class GeoaddressAutocompleteWidget(TextInput):
             
         except (json.JSONDecodeError, TypeError):
             values = {}
-        text_full = values.get("text_full", []) if isinstance(values, dict) else []
+
+        geoaddress_data = {
+            k: {
+                "value": values.get(k) or "" if isinstance(values, dict) else "",
+                "label": v.get("label", k),
+            }
+            for k, v in GEOADDRESS_FIELDS_ESSENTIALS.items()
+        }
+        text_full = [data["value"] for data in geoaddress_data.values() if data["value"]]
         context = {
             "name": name,
             "value": value,
@@ -42,13 +63,7 @@ class GeoaddressAutocompleteWidget(TextInput):
             "search_value": ", ".join(text_full) if text_full else "",
             "autocomplete_url": autocomplete_url,
             "redirect_url": reverse(self.redirect_url),
-            "geoaddress_data": {
-                k: {
-                    "value": values.get(k) or "" if isinstance(values, dict) else "",
-                    "label": v.get("label", k),
-                }
-                for k, v in GEOADDRESS_FIELDS_ESSENTIALS.items()
-            },
+            "geoaddress_data": geoaddress_data,
         }
         return render_to_string(self.template_name, context)
 
@@ -59,6 +74,40 @@ class GeoaddressAutocompleteWidget(TextInput):
 
 class GeoaddressField(models.JSONField):
     """Field to store geoaddress data via AddressModel with autocomplete."""
+
+    def from_db_value(self, value: Any, expression: Any, connection: Any) -> GeoaddressValue | None:
+        """Convert database value to GeoaddressValue."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                value = {}
+        return GeoaddressValue(value) if isinstance(value, dict) else None
+
+    def to_python(self, value: Any) -> GeoaddressValue | None:
+        """Convert value to GeoaddressValue."""
+        if value is None:
+            return None
+        if isinstance(value, GeoaddressValue):
+            return value
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                value = {}
+        return GeoaddressValue(value) if isinstance(value, dict) else None
+
+    def get_prep_value(self, value: Any) -> dict | None:
+        """Prepare value for database storage."""
+        if value is None:
+            return None
+        if isinstance(value, GeoaddressValue):
+            return dict(value)
+        if isinstance(value, dict):
+            return value
+        return None
 
     def formfield(self, **kwargs: Any) -> Any:
         """Ensure the custom widget is used.

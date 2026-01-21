@@ -1,0 +1,125 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Provider" %}: {{ provider.display_name }} - Geoaddress</title>
+    <link rel="stylesheet" href="{% static 'css/geoaddress_provider.css' %}">
+</head>
+<body>
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'djgeoaddress:list_providers' %}" style="color: #0066cc; text-decoration: none;">← {% trans "Back to providers list" %}</a>
+    </div>
+    
+    <div class="provider-card">
+        <div class="provider-header">
+            <div>
+                <h1 class="provider-name">{{ provider.display_name }}</h1>
+                <div class="provider-display">{{ provider.name }}</div>
+            </div>
+            <span class="status {% if provider.are_packages_installed and provider.is_config_ready %}status-available{% else %}status-not-available{% endif %}">
+                {% if provider.are_packages_installed and provider.is_config_ready %}
+                    {% trans "Available" %}
+                {% else %}
+                    {% trans "Not available" %}
+                {% endif %}
+            </span>
+        </div>
+        
+        {% if provider.description %}
+        <div style="margin-top: 20px; margin-bottom: 20px;">
+            <div style="font-weight: 600; color: #555; margin-bottom: 8px;">{% trans "Description" %}:</div>
+            <div style="color: #666;">{{ provider.description }}</div>
+        </div>
+        {% endif %}
+        
+        {% if provider.priority is not None %}
+        <div style="margin-top: 15px; margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #555; margin-bottom: 8px;">{% trans "Priority" %}:</div>
+            <div style="color: #666;">{{ provider.priority }}</div>
+        </div>
+        {% endif %}
+        
+        {% if provider.documentation_url %}
+        <div style="margin-top: 15px; margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #555; margin-bottom: 8px;">{% trans "Documentation" %}:</div>
+            <div><a href="{{ provider.documentation_url }}" target="_blank" style="color: #0066cc;">{{ provider.documentation_url }}</a></div>
+        </div>
+        {% endif %}
+        
+        {% if provider.site_url %}
+        <div style="margin-top: 15px; margin-bottom: 15px;">
+            <div style="font-weight: 600; color: #555; margin-bottom: 8px;">{% trans "Website" %}:</div>
+            <div><a href="{{ provider.site_url }}" target="_blank" style="color: #0066cc;">{{ provider.site_url }}</a></div>
+        </div>
+        {% endif %}
+        
+        {% if provider.services %}
+        <div class="services">
+            <div class="services-title">{% trans "Available services" %}:</div>
+            <div class="service-list">
+                {% for service in provider.services %}
+                <span class="service-badge">{{ service }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if provider.required_packages %}
+        <div style="margin-top: 20px;">
+            <div style="font-weight: 600; color: #555; margin-bottom: 8px;">{% trans "Required packages" %}:</div>
+            <div class="service-list">
+                {% for package in provider.required_packages %}
+                <span class="service-badge" style="background-color: #fff3cd; color: #856404;">{{ package }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if provider.missing_packages %}
+        <div style="margin-top: 15px;">
+            <div style="font-weight: 600; color: #721c24; margin-bottom: 8px;">{% trans "Missing packages" %}:</div>
+            <div class="service-list">
+                {% for package in provider.missing_packages %}
+                <span class="service-badge" style="background-color: #f8d7da; color: #721c24;">{{ package }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if provider.config_keys %}
+        <div style="margin-top: 20px;">
+            <div style="font-weight: 600; color: #555; margin-bottom: 8px;">{% trans "Configuration keys" %}:</div>
+            <div class="service-list">
+                {% for key in provider.config_keys %}
+                <span class="service-badge" style="background-color: #d1ecf1; color: #0c5460;">{{ key }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if provider.missing_config_keys %}
+        <div style="margin-top: 15px;">
+            <div style="font-weight: 600; color: #721c24; margin-bottom: 8px;">{% trans "Missing configuration keys" %}:</div>
+            <div class="service-list">
+                {% for key in provider.missing_config_keys %}
+                <span class="service-badge" style="background-color: #f8d7da; color: #721c24;">{{ key }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if provider.missing_services %}
+        <div style="margin-top: 15px;">
+            <div style="font-weight: 600; color: #721c24; margin-bottom: 8px;">{% trans "Missing services" %}:</div>
+            <div class="service-list">
+                {% for service in provider.missing_services %}
+                <span class="service-badge" style="background-color: #f8d7da; color: #721c24;">{{ service }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -43,7 +43,7 @@ class AddressAdmin(AdminBoostModel):
     def backend_name_display(self, obj: AddressModel | None) -> str:
         if not obj or not obj.backend or not obj.backend_name:
             return "-"
-        url = reverse("admin:djgeoaddress_providermodel_change", args=[obj.backend])
+        url = reverse("admin:djgeoaddress_geoaddressprovidermodel_change", args=[obj.backend])
         return format_html('<a href="{}">{}</a>', url, obj.backend_name)
     backend_name_display.short_description = _("Backend name")
 
@@ -76,12 +76,8 @@ class AddressAdmin(AdminBoostModel):
             }
             qs = self.model.objects.addresses_autocomplete(query=search_term, **kwargs)
         return {
-            "results": [
-                {
-                    "id": str(obj.pk),
-                    "text": str(obj),
-                    **{field: getattr(obj, field) for field in GEOADDRESS_FIELDS_DESCRIPTIONS}
-                }
+            "addresses": [
+                {field: getattr(obj, field) for field in GEOADDRESS_FIELDS_DESCRIPTIONS}
                 for obj in qs
             ],
             "pagination": {

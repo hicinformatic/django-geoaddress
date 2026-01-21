@@ -24,6 +24,7 @@ class AddressManager(VirtualManager):
         self.backend = kwargs.get("backend", None)
         self.attribute_search = kwargs.get("attribute_search", None)
         self._command = kwargs.get("command", "search_addresses")
+        self._cached_providers = {}
         self._cached_data_addresses_autocomplete = {}
         self._cached_data_search = {}
         self._cached_data_reverse_geocode = {}
@@ -69,12 +70,17 @@ class AddressManager(VirtualManager):
                 data_list.append(normalize_data)
         return data_list
 
+    def get_response_times(self, command: str) -> dict[str, float]:
+        times = self._cached_providers.get(command, [])
+        return {provider["name"]: provider["response_time"] for provider in times}
+
     def get_queryset_command(self, command: str, **kwargs: Any) -> Any:
         cached = self.get_cached_command(command)
         if not cached or kwargs.get("ignore_cache", False):
             self._clear_cached_command(command)
             command_func = self._commands[command]
             results = command_func(**kwargs)
+            self._cached_providers[command] = results
             data_list = []
             if isinstance(results, dict):
                 data_list.extend(self.get_command_data_list_from_dict(results, command))

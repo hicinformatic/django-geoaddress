@@ -1,0 +1,23 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Geoaddress" %} - Accueil</title>
+    <link rel="stylesheet" href="{% static 'css/geoaddress_index.css' %}">
+</head>
+<body>
+    <div class="home-container">
+        <h1 class="home-title">{% trans "Geoaddress" %}</h1>
+        <div class="nav-links">
+            <a href="{{ providers_url }}" class="nav-link">
+                {% trans "Providers" %}
+            </a>
+            <a href="{{ suggest_url }}" class="nav-link">
+                {% trans "Suggest" %}
+            </a>
+        </div>
+    </div>
+</body>
+</html>

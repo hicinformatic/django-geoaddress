@@ -1,0 +1,146 @@
+{% load i18n static boosted_tags %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Location Detail" %} - Test App</title>
+    <link rel="stylesheet" href="{% static 'css/geoaddress_suggest.css' %}">
+    <style>
+        .detail-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        .detail-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .detail-field {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-field:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .detail-value {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .address-details {
+            margin-top: 15px;
+        }
+        .address-detail-item {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #417690;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #205067;
+        }
+        .btn-danger {
+            background-color: #ba2121;
+        }
+        .btn-danger:hover {
+            background-color: #a41515;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="detail-container">
+        <div class="page-header">
+            <h1>{% trans "Location Detail" %}</h1>
+            <a href="{% url 'app:location_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
+        </div>
+
+        <div class="detail-card">
+            <div class="detail-field">
+                <span class="detail-label">{% trans "Name" %}:</span>
+                <div class="detail-value">{{ location.name }}</div>
+            </div>
+
+            <div class="detail-field">
+                <span class="detail-label">{% trans "Address" %}:</span>
+                {% if location.address %}
+                    {% if location.address|get_item:"text" %}
+                        <div class="detail-value">{{ location.address|get_item:"text" }}</div>
+                    {% endif %}
+                    <div class="address-details">
+                        {% if location.address|get_item:"address_line1" %}
+                            <div class="address-detail-item"><strong>{% trans "Address Line 1" %}:</strong> {{ location.address|get_item:"address_line1" }}</div>
+                        {% endif %}
+                        {% if location.address|get_item:"city" %}
+                            <div class="address-detail-item"><strong>{% trans "City" %}:</strong> {{ location.address|get_item:"city" }}</div>
+                        {% endif %}
+                        {% if location.address|get_item:"postal_code" %}
+                            <div class="address-detail-item"><strong>{% trans "Postal Code" %}:</strong> {{ location.address|get_item:"postal_code" }}</div>
+                        {% endif %}
+                        {% if location.address|get_item:"country" %}
+                            <div class="address-detail-item"><strong>{% trans "Country" %}:</strong> {{ location.address|get_item:"country" }}</div>
+                        {% endif %}
+                        {% if location.address|get_item:"latitude" %}
+                            <div class="address-detail-item"><strong>{% trans "Latitude" %}:</strong> {{ location.address|get_item:"latitude" }}</div>
+                        {% endif %}
+                        {% if location.address|get_item:"longitude" %}
+                            <div class="address-detail-item"><strong>{% trans "Longitude" %}:</strong> {{ location.address|get_item:"longitude" }}</div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="detail-value">-</div>
+                {% endif %}
+            </div>
+
+            <div class="detail-field">
+                <span class="detail-label">{% trans "Created at" %}:</span>
+                <div class="detail-value">{{ location.created_at|date:"d/m/Y H:i:s" }}</div>
+            </div>
+
+            <div class="detail-field">
+                <span class="detail-label">{% trans "Updated at" %}:</span>
+                <div class="detail-value">{{ location.updated_at|date:"d/m/Y H:i:s" }}</div>
+            </div>
+
+            <div class="action-buttons">
+                <a href="{% url 'app:location_update' location.pk %}" class="btn">{% trans "Edit" %}</a>
+                <a href="{% url 'app:location_delete' location.pk %}" class="btn btn-danger">{% trans "Delete" %}</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

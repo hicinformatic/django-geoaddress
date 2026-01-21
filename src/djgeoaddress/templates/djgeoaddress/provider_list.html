@@ -9,21 +9,26 @@
     
 </head>
 <body>
-    <h1>Geoaddress Providers</h1>
-    <a href="?format=json" class="json-link">Voir en JSON</a>
-    <div style="clear: both;"></div>
+    <div class="page-header">
+        <h1>Geoaddress Providers</h1>
+        <div class="header-links">
+            <a href="{% url 'djgeoaddress:search_addresses' %}" class="header-link">{% trans "Suggest" %}</a>
+            <a href="?format=json" class="header-link">{% trans "View in JSON" %}</a>
+        </div>
+    </div>
     
     {% for provider in providers %}
-    <div class="provider-card">
-        <div class="provider-header">
-            <div>
-                <div class="provider-name">{{ provider.name }}</div>
-                <div class="provider-display">{{ provider.display_name }}</div>
+    <a href="{% url 'djgeoaddress:detail_provider' provider.name %}" class="provider-card-link">
+        <div class="provider-card">
+            <div class="provider-header">
+                    <div>
+                    <div class="provider-name">{{ provider.display_name }}</div>
+                    <div class="provider-display">{{ provider.name }}</div>
+                </div>
+                <span class="status {% if provider.status == 'available' %}status-available{% else %}status-not-available{% endif %}">
+                    {{ provider.status }}
+                </span>
             </div>
-            <span class="status {% if provider.status == 'available' %}status-available{% else %}status-not-available{% endif %}">
-                {{ provider.status }}
-            </span>
-        </div>
         
         {% if provider.status == "available" and provider.services %}
         <div class="services">
@@ -39,7 +44,8 @@
             <div class="no-services">{% trans "No available services" %}</div>
         </div>
         {% endif %}
-    </div>
+        </div>
+    </a>
     {% empty %}
     <div class="provider-card">
         <p>Aucun provider trouvé.</p>

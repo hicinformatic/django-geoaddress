@@ -1,0 +1,165 @@
+{% load i18n static boosted_tags %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Address Detail" %} - Geoaddress</title>
+    <link rel="stylesheet" href="{% static 'css/geoaddress_suggest.css' %}">
+</head>
+<body>
+    <div class="page-header">
+        <h1>{% trans "Address Detail" %}</h1>
+        <div class="header-links">
+            <a href="{% url 'djgeoaddress:search_addresses' %}" class="header-link">{% trans "Back to search" %}</a>
+        </div>
+    </div>
+    
+    {% if address %}
+    <div class="address-card">
+        {% if address.text_full %}
+        <div class="address-header">
+            {% for line in address.text_full %}
+            {{ line }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="address-details">
+            {% if address.address_line1 %}
+            <div class="address-field">
+                <strong>{% trans "Address Line 1" %}:</strong>
+                <div>{{ address.address_line1 }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.address_line2 %}
+            <div class="address-field">
+                <strong>{% trans "Address Line 2" %}:</strong>
+                <div>{{ address.address_line2 }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.address_line3 %}
+            <div class="address-field">
+                <strong>{% trans "Address Line 3" %}:</strong>
+                <div>{{ address.address_line3 }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.city %}
+            <div class="address-field">
+                <strong>{% trans "City" %}:</strong>
+                <div>{{ address.city }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.postal_code %}
+            <div class="address-field">
+                <strong>{% trans "Postal Code" %}:</strong>
+                <div>{{ address.postal_code }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.state %}
+            <div class="address-field">
+                <strong>{% trans "State" %}:</strong>
+                <div>{{ address.state }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.region %}
+            <div class="address-field">
+                <strong>{% trans "Region" %}:</strong>
+                <div>{{ address.region }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.county %}
+            <div class="address-field">
+                <strong>{% trans "County" %}:</strong>
+                <div>{{ address.county }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.municipality %}
+            <div class="address-field">
+                <strong>{% trans "Municipality" %}:</strong>
+                <div>{{ address.municipality }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.neighbourhood %}
+            <div class="address-field">
+                <strong>{% trans "Neighbourhood" %}:</strong>
+                <div>{{ address.neighbourhood }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.country %}
+            <div class="address-field">
+                <strong>{% trans "Country" %}:</strong>
+                <div>{{ address.country }}{% if address.country_code %} ({{ address.country_code }}){% endif %}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.address_type %}
+            <div class="address-field">
+                <strong>{% trans "Address Type" %}:</strong>
+                <div>{{ address.address_type }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.reference %}
+            <div class="address-field">
+                <strong>{% trans "Reference" %}:</strong>
+                <div>{{ address.reference }}</div>
+            </div>
+            {% endif %}
+            
+            {% if address.geoaddress_id %}
+            <div class="address-field">
+                <strong>{% trans "Geoaddress ID" %}:</strong>
+                <div>{{ address.geoaddress_id }}</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if address.latitude or address.longitude or address.confidence or address.relevance or address.backend_name %}
+        <div class="address-coords">
+            {% if address.backend_name %}
+            <div class="backend-badge">{{ address.backend_name }}</div>
+            {% endif %}
+            {% if address.latitude %}
+            <div class="coord"><strong>{% trans "Latitude" %}:</strong> {{ address.latitude }}</div>
+            {% endif %}
+            {% if address.longitude %}
+            <div class="coord"><strong>{% trans "Longitude" %}:</strong> {{ address.longitude }}</div>
+            {% endif %}
+            {% if address.confidence %}
+            <div class="coord"><strong>{% trans "Confidence" %}:</strong> {{ address.confidence }}%</div>
+            {% endif %}
+            {% if address.relevance %}
+            <div class="coord"><strong>{% trans "Relevance" %}:</strong> {{ address.relevance }}%</div>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if address.osm_id or address.osm_type %}
+        <div class="address-osm">
+            {% if address.osm_id %}
+            <div class="osm-field"><strong>{% trans "OSM ID" %}:</strong> {{ address.osm_id }}</div>
+            {% endif %}
+            {% if address.osm_type %}
+            <div class="osm-field"><strong>{% trans "OSM Type" %}:</strong> {{ address.osm_type }}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="no-results">
+        <p>{% trans "Address not found" %}</p>
+    </div>
+    {% endif %}
+</body>
+</html>

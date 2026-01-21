@@ -1,4 +1,4 @@
-{% load i18n static %}
+{% load i18n static boosted_tags %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -8,28 +8,32 @@
     <link rel="stylesheet" href="{% static 'css/geoaddress_suggest.css' %}">
 </head>
 <body>
-    <h1>{% trans "Address search" %}</h1>
-    {% if query or backend or first %}
-    <a href="?{% if query %}q={{ query|urlencode }}{% endif %}{% if backend %}{% if query %}&{% endif %}bck={{ backend|urlencode }}{% endif %}{% if first %}{% if query or backend %}&{% endif %}first=1{% endif %}&format=json" class="json-link">Voir en JSON</a>
-    {% else %}
-    <a href="?format=json" class="json-link">{% trans "View in JSON" %}</a>
-    {% endif %}
-    <div style="clear: both;"></div>
+    <div class="page-header">
+        <h1>{% trans "Address search" %}</h1>
+        <div class="header-links">
+            <a href="{% url 'djgeoaddress:list_providers' %}" class="header-link">{% trans "Providers" %}</a>
+            {% if query or backend or first %}
+            <a href="?{% if query %}q={{ query|urlencode }}{% endif %}{% if backend %}{% if query %}&{% endif %}bck={{ backend|urlencode }}{% endif %}{% if first %}{% if query or backend %}&{% endif %}first=1{% endif %}&format=json" class="header-link">{% trans "View in JSON" %}</a>
+            {% else %}
+            <a href="?format=json" class="header-link">{% trans "View in JSON" %}</a>
+            {% endif %}
+        </div>
+    </div>
     
     <form method="get" class="search-form">
-        <div class="form-group">
-            <label for="q">{% trans "Search" %}</label>
-            <input type="text" id="q" name="q" value="{{ query }}" placeholder="Entrez une adresse...">
-        </div>
-        
         <div class="form-row">
+            <div class="form-group">
+                <label for="q">{% trans "Search" %}</label>
+                <input type="text" id="q" name="q" value="{{ query }}" placeholder="Entrez une adresse...">
+            </div>
+            
             <div class="form-group">
                 <label for="bck">Backend</label>
                 <select id="bck" name="bck">
                     <option value="">Tous les backends</option>
                     {% for provider in providers %}
                     <option value="{{ provider.name }}" {% if backend == provider.name %}selected{% endif %}>
-                        {{ provider.display_name }}
+                        {{ provider.display_name }}{% if provider_response_times and provider_response_times|get_item:provider.name %} ({{ provider_response_times|get_item:provider.name }}s){% endif %}
                     </option>
                     {% endfor %}
                 </select>
@@ -39,90 +43,64 @@
                 <label>&nbsp;</label>
                 <div class="form-checkbox">
                     <input type="checkbox" id="first" name="first" value="1" {% if first %}checked{% endif %}>
-                    <label for="first" style="margin: 0;">{% trans "Only first result" %}</label>
+                    <label for="first" style="margin: 0;">{% trans "First backend response" %}</label>
                 </div>
             </div>
         </div>
         
-        <button type="submit">Rechercher</button>
+        <div class="form-submit-row">
+            <button type="submit">Rechercher</button>
+            {% if query %}
+            <div class="results-count">
+                {% if count > 0 %}
+                    {{ count }} {% trans "result" %}{{ count|pluralize }} {% trans "found" %}{{ count|pluralize }}
+                {% else %}
+                    {% trans "No results found" %}
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
     </form>
     
-    {% if query %}
-    <div class="results-info">
-        {% if count > 0 %}
-            {{ count }} {% trans "result" %}{{ count|pluralize }} {% trans "found" %}{{ count|pluralize }}
-        {% else %}
-            {% trans "No results found" %}
-        {% endif %}
-    </div>
-    {% endif %}
     
     {% if addresses %}
         {% for address in addresses %}
-        <div class="address-card">
-            <div class="address-header">{{ address.text }}</div>
-            
-            <div class="address-details">
-                {% if address.address_line1 %}
-                <div class="address-field">
-                    <strong>Adresse ligne 1</strong>
-                    {{ address.address_line1 }}
+        <a href="{% url 'djgeoaddress:detail_address' address.geoaddress_id %}" class="address-card-link">
+            <div class="address-card">
+                {% if address.text_full %}
+                <div class="address-header">
+                    {% for line in address.text_full %}
+                    {{ line }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
                 </div>
                 {% endif %}
                 
-                {% if address.city %}
-                <div class="address-field">
-                    <strong>Ville</strong>
-                    {{ address.city }}
-                </div>
-                {% endif %}
-                
-                {% if address.postal_code %}
-                <div class="address-field">
-                    <strong>Code postal</strong>
-                    {{ address.postal_code }}
-                </div>
-                {% endif %}
-                
-                {% if address.country %}
-                <div class="address-field">
-                    <strong>Pays</strong>
-                    {{ address.country }}{% if address.country_code %} ({{ address.country_code }}){% endif %}
-                </div>
-                {% endif %}
-                
-                {% if address.state %}
-                <div class="address-field">
-                    <strong>État/Région</strong>
-                    {{ address.state }}
-                </div>
-                {% endif %}
-                
-                {% if address.municipality %}
-                <div class="address-field">
-                    <strong>Municipalité</strong>
-                    {{ address.municipality }}
+                {% if address.latitude or address.longitude or address.confidence or address.relevance or address.backend_name %}
+                <div class="address-coords">
+                    {% if address.backend_name %}
+                    <div class="backend-badge">
+                        <b>{{ address.backend_name }}</b>&nbsp;{{ times|get_item:address.backend }}s
+                    </div>
+                    {% endif %}
+                    {% if address.latitude %}
+                    <div class="coord"><strong>{% trans "Latitude" %}:</strong> {{ address.latitude }}</div>
+                    {% endif %}
+                    {% if address.longitude %}
+                    <div class="coord"><strong>{% trans "Longitude" %}:</strong> {{ address.longitude }}</div>
+                    {% endif %}
+                    {% if address.confidence %}
+                    <div class="coord"><strong>{% trans "Confidence" %}:</strong> {{ address.confidence }}%</div>
+                    {% endif %}
+                    {% if address.relevance %}
+                    <div class="coord"><strong>{% trans "Relevance" %}:</strong> {{ address.relevance }}%</div>
+                    {% endif %}
+                    {% if address.response_time %}
+                    <div class="coord"><strong>{% trans "Response time" %}:</strong> {{ address.response_time }}s</div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
-            
-            {% if address.latitude and address.longitude %}
-            <div class="address-coords">
-                <div class="coord"><strong>Latitude:</strong> {{ address.latitude }}</div>
-                <div class="coord"><strong>Longitude:</strong> {{ address.longitude }}</div>
-                {% if address.confidence %}
-                <div class="coord"><strong>Confiance:</strong> {{ address.confidence }}%</div>
-                {% endif %}
-                {% if address.relevance %}
-                <div class="coord"><strong>Pertinence:</strong> {{ address.relevance }}%</div>
-                {% endif %}
-            </div>
-            {% endif %}
-            
-            {% if address.backend_name %}
-            <div class="backend-badge">{{ address.backend_name }}</div>
-            {% endif %}
-        </div>
+        </a>
         {% endfor %}
     {% elif query %}
         <div class="no-results">
