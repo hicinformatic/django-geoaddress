@@ -59,6 +59,12 @@
     cursor: pointer;
 }
 
+.geoaddress-autocomplete-wrapper > .geoaddress-data > .geoaddress-optionals-separator {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px dotted;
+}
+
 .geoaddress-autocomplete-wrapper > .geoaddress-data > .geoaddress-data-fieldset {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

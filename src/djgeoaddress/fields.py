@@ -7,7 +7,11 @@ from django.db import models
 from django.forms.widgets import TextInput
 from django.template.loader import render_to_string
 from django.urls import reverse
-from geoaddress import GEOADDRESS_FIELDS_ESSENTIALS
+from geoaddress import (
+    GEOADDRESS_FIELDS_ESSENTIALS,
+    GEOADDRESS_FIELDS_OPTIONALS,
+    GEOADDRESS_FULL_FIELDS,
+)
 
 
 class GeoaddressValue(dict):
@@ -55,6 +59,13 @@ class GeoaddressAutocompleteWidget(TextInput):
             }
             for k, v in GEOADDRESS_FIELDS_ESSENTIALS.items()
         }
+        geoaddress_optionals = {
+            k: {
+                "value": values.get(k) or "" if isinstance(values, dict) else "",
+                "label": v.get("label", k),
+            }
+            for k, v in GEOADDRESS_FIELDS_OPTIONALS.items()
+        }
         text_full = [data["value"] for data in geoaddress_data.values() if data["value"]]
         context = {
             "name": name,
@@ -64,6 +75,8 @@ class GeoaddressAutocompleteWidget(TextInput):
             "autocomplete_url": autocomplete_url,
             "redirect_url": reverse(self.redirect_url),
             "geoaddress_data": geoaddress_data,
+            "geoaddress_optionals": geoaddress_optionals,
+            "geoaddress_fields": list(GEOADDRESS_FULL_FIELDS.keys()),
         }
         return render_to_string(self.template_name, context)
 

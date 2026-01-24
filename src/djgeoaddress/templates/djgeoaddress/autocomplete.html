@@ -21,6 +21,7 @@
     </div>
 
     <div class="geoaddress-data geoaddress-autocomplete-hidden">
+        <hr>
         <div class="geoaddress-data-fieldset">
             {% for k, v in geoaddress_data.items %}
             <div class="geoaddress-data-field">
@@ -29,8 +30,15 @@
             </div>
             {% endfor %}
         </div>
+        <div class="geoaddress-optionals-separator">{% trans "Optionals" %}</div>
+        <div class="geoaddress-data-fieldset">
+            {% for k, v in geoaddress_optionals.items %}
+            <div class="geoaddress-data-field">
+                <label for="{{ k }}">{{ v.label }}</label>
+                <input type="text" name="{{ k }}_geoaddress_autocomplete" id="{{ k }}_geoaddress_autocomplete" value="{{ v.value }}" />
+            </div>
+            {% endfor %}
+        </div>
     </div>
-
     <textarea class="geoaddress-autocomplete-hidden" name="{{ name }}" id="{{ name }}">{{ value }}</textarea>
-
 </div>
