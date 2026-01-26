@@ -8,7 +8,6 @@ from django.urls import NoReverseMatch, Resolver404, resolve, reverse
 
 from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
 
-from ..managers.suggest import AddressManager
 from ..models.provider import GeoaddressProviderModel
 from ..models.suggest import AddressModel
 
@@ -35,8 +34,6 @@ def search_addresses(request: HttpRequest) -> HttpResponse:
     first = first_param == "1" if first_param else False
 
     # Get addresses using the same method as admin
-    provider_response_times = {}
-    provider_response_times_by_display_name = {}
     addresses = []
 
     if query:

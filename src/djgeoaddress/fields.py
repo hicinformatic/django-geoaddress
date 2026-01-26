@@ -10,6 +10,7 @@ from django.urls import reverse
 from geoaddress import (
     GEOADDRESS_FIELDS_ESSENTIALS,
     GEOADDRESS_FIELDS_OPTIONALS,
+    GEOADDRESS_FIELDS_COORDINATES,
     GEOADDRESS_FULL_FIELDS,
 )
 
@@ -43,7 +44,7 @@ class GeoaddressAutocompleteWidget(TextInput):
         return reverse(self.address_url_name)
 
     def render(
-        self, name: str, value: Any, attrs: dict[str, Any] | None = None, renderer: Any = None
+        self, name: str, value: Any, attrs: dict[str, Any] | None = None, _renderer: Any = None
     ) -> str:
         autocomplete_url = self.get_url()
         try:
@@ -66,6 +67,13 @@ class GeoaddressAutocompleteWidget(TextInput):
             }
             for k, v in GEOADDRESS_FIELDS_OPTIONALS.items()
         }
+        geoaddress_coordinates = {
+            k: {
+                "value": values.get(k) or "" if isinstance(values, dict) else "",
+                "label": v.get("label", k),
+            }
+            for k, v in GEOADDRESS_FIELDS_COORDINATES.items()
+        }
         text_full = [data["value"] for data in geoaddress_data.values() if data["value"]]
         context = {
             "name": name,
@@ -76,6 +84,7 @@ class GeoaddressAutocompleteWidget(TextInput):
             "redirect_url": reverse(self.redirect_url),
             "geoaddress_data": geoaddress_data,
             "geoaddress_optionals": geoaddress_optionals,
+            "geoaddress_coordinates": geoaddress_coordinates,
             "geoaddress_fields": list(GEOADDRESS_FULL_FIELDS.keys()),
         }
         return render_to_string(self.template_name, context)
@@ -88,7 +97,7 @@ class GeoaddressAutocompleteWidget(TextInput):
 class GeoaddressField(models.JSONField):
     """Field to store geoaddress data via AddressModel with autocomplete."""
 
-    def from_db_value(self, value: Any, expression: Any, connection: Any) -> GeoaddressValue | None:
+    def from_db_value(self, value: Any, _expression: Any, _connection: Any) -> GeoaddressValue | None:
         """Convert database value to GeoaddressValue."""
         if value is None:
             return None

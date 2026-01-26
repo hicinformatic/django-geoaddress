@@ -21,7 +21,7 @@ class Command(BaseCommand):
             '--provider',
             type=str,
             help='Provider name filter',
-        )-
+        )
         parser.add_argument(
             '--first',
             action='store_true',
