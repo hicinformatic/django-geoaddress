@@ -1,0 +1,9 @@
+/* Django Native theme - Blue colors */
+:root {
+    --primary-color: #417690;
+    --primary-hover: #205067;
+    --danger-color: #ba2121;
+    --danger-hover: #a41515;
+    --secondary-color: #6c757d;
+    --secondary-hover: #5a6268;
+}

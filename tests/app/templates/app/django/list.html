@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% trans "Locations" %}</title>
+    <title>{% trans "Locations" %} - Django Native</title>
     <link rel="stylesheet" href="{% static 'css/geoaddress_suggest.css' %}">
     <link rel="stylesheet" href="{% static 'css/location-django.css' %}">
     <link rel="stylesheet" href="{% static 'css/location-base.css' %}">
@@ -17,7 +17,7 @@
         </div>
 
         <div class="page-header">
-            <h1>{% trans "Locations" %}</h1>
+            <h1>{% trans "Locations" %} <span class="version-badge">Django Native</span></h1>
             <a href="{% url 'app:location_create' %}" class="btn">{% trans "Add New Location" %}</a>
         </div>
 
@@ -38,9 +38,8 @@
                             <div class="location-address">{{ location.address }}</div>
                         </div>
                         <div class="location-actions">
-                            <a href="{% url 'app:location_detail' location.pk %}" class="btn">{% trans "View" %}</a>
-                            <a href="{% url 'app:location_update' location.pk %}" class="btn">{% trans "Edit" %}</a>
-                            <a href="{% url 'app:location_delete' location.pk %}" class="btn btn-danger">{% trans "Delete" %}</a>
+                            <a href="{% url 'app:location_django_update' location.pk %}" class="btn">{% trans "Edit" %}</a>
+                            <a href="{% url 'app:location_django_remove' location.pk %}" class="btn btn-danger">{% trans "Delete" %}</a>
                         </div>
                     </div>
                     <div class="location-meta">

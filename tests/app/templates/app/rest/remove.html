@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Location - REST Framework</title>
+    <link rel="stylesheet" href="/static/css/geoaddress_suggest.css">
+    <link rel="stylesheet" href="/static/css/location-rest.css">
+    <link rel="stylesheet" href="/static/css/location-base.css">
+</head>
+<body>
+    <div class="delete-container">
+        <div class="nav-links">
+            <a href="/locations/django/">Django Native</a>
+            <a href="/locations/rest/">REST Framework</a>
+        </div>
+
+        <div class="api-info">
+            <strong>REST Framework API:</strong> This deletion uses pure JavaScript to interact with the REST API.
+        </div>
+
+        <div class="delete-card">
+            <h1>Delete Location <span class="version-badge">REST Framework</span></h1>
+
+            <div class="warning-message">
+                <strong>Warning:</strong> Are you sure you want to delete this location? This action cannot be undone.
+            </div>
+
+            <div id="location-info" class="location-info">
+                <div class="loading">Loading location...</div>
+            </div>
+
+            <form id="delete-form">
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-danger">Yes, delete</button>
+                    <a href="/locations/rest/" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const LOCATION_ID = {{ location_id }};
+        const API_BASE_URL = `/api/locations/${LOCATION_ID}/`;
+        const CSRF_TOKEN = getCookie('csrftoken');
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        async function loadLocation() {
+            const container = document.getElementById('location-info');
+            try {
+                const response = await fetch(API_BASE_URL);
+                if (!response.ok) {
+                    throw new Error('Failed to load location');
+                }
+                const location = await response.json();
+                container.innerHTML = `
+                    <strong>Location:</strong> ${escapeHtml(location.name)}<br>
+                    ${location.address_display ? `<strong>Address:</strong> ${escapeHtml(location.address_display)}` : ''}
+                `;
+            } catch (error) {
+                container.innerHTML = `<div class="error-message">Error loading location: ${error.message}</div>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                text = String(text);
+            }
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('delete-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!confirm('Are you sure you want to delete this location?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': CSRF_TOKEN
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete location');
+                }
+
+                alert('Location deleted successfully!');
+                window.location.href = '/locations/rest/';
+            } catch (error) {
+                alert(`Error deleting location: ${error.message}`);
+            }
+        });
+
+        loadLocation();
+    </script>
+</body>
+</html>

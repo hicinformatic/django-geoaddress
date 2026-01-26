@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if object %}{% trans "Edit Location" %}{% else %}{% trans "Create Location" %}{% endif %}</title>
+    <title>{% trans "Edit Location" %} - Django Native</title>
     <link rel="stylesheet" href="{% static 'css/geoaddress_suggest.css' %}">
     <link rel="stylesheet" href="{% static 'css/location-django.css' %}">
     <link rel="stylesheet" href="{% static 'css/location-base.css' %}">
@@ -18,8 +18,8 @@
         </div>
 
         <div class="page-header">
-            <h1>{% if object %}{% trans "Edit Location" %}{% else %}{% trans "Create Location" %}{% endif %}</h1>
-            <a href="{% url 'app:location_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
+            <h1>{% trans "Edit Location" %} <span class="version-badge">Django Native</span></h1>
+            <a href="{% url 'app:location_django_list' %}" class="btn btn-secondary">{% trans "Back to List" %}</a>
         </div>
 
         {% if form.non_field_errors %}
@@ -54,8 +54,8 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn">{% if object %}{% trans "Update Location" %}{% else %}{% trans "Create Location" %}{% endif %}</button>
-                <a href="{% url 'app:location_list' %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
+                <button type="submit" class="btn">{% trans "Update Location" %}</button>
+                <a href="{% url 'app:location_django_list' %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
             </div>
         </form>
     </div>

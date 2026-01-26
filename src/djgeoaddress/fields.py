@@ -44,7 +44,7 @@ class GeoaddressAutocompleteWidget(TextInput):
         return reverse(self.address_url_name)
 
     def render(
-        self, name: str, value: Any, attrs: dict[str, Any] | None = None, _renderer: Any = None
+        self, name: str, value: Any, attrs: dict[str, Any] | None = None, renderer: Any = None
     ) -> str:
         autocomplete_url = self.get_url()
         try:

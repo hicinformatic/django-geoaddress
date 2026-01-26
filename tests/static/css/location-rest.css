@@ -1,0 +1,9 @@
+/* REST Framework theme - Green colors */
+:root {
+    --primary-color: #28a745;
+    --primary-hover: #218838;
+    --danger-color: #dc3545;
+    --danger-hover: #c82333;
+    --secondary-color: #6c757d;
+    --secondary-hover: #5a6268;
+}

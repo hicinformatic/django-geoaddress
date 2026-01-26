@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Location - REST Framework</title>
+    <link rel="stylesheet" href="/static/css/geoaddress_suggest.css">
+    <link rel="stylesheet" href="/static/css/location-rest.css">
+    <link rel="stylesheet" href="/static/css/location-base.css">
+</head>
+<body>
+    <div class="form-container">
+        <div class="nav-links">
+            <a href="/locations/django/">Django Native</a>
+            <a href="/locations/rest/">REST Framework</a>
+        </div>
+
+        <div class="api-info">
+            <strong>REST Framework API:</strong> This form uses pure JavaScript to interact with the REST API.
+        </div>
+
+        <div class="page-header">
+            <h1>Create Location <span class="version-badge">REST Framework</span></h1>
+            <a href="/locations/rest/" class="btn btn-secondary">Back to List</a>
+        </div>
+
+        <div id="messages"></div>
+        <form id="location-form">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required>
+                <div id="name-error" class="error"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="address">Address (JSON)</label>
+                <textarea id="address" name="address" rows="5">{}</textarea>
+                <div id="address-error" class="error"></div>
+                <small>Enter address as JSON object, e.g. {"street": "35 rue de la Paix", "city": "Paris"}</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn">Create Location</button>
+                <a href="/locations/rest/" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api/locations/';
+        const CSRF_TOKEN = getCookie('csrftoken');
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            messagesDiv.appendChild(messageDiv);
+            setTimeout(() => messageDiv.remove(), 5000);
+        }
+
+        function clearErrors() {
+            document.getElementById('name-error').textContent = '';
+            document.getElementById('address-error').textContent = '';
+        }
+
+        document.getElementById('location-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            clearErrors();
+
+            const name = document.getElementById('name').value;
+            let address;
+            try {
+                const addressText = document.getElementById('address').value.trim();
+                address = addressText ? JSON.parse(addressText) : {};
+            } catch (error) {
+                document.getElementById('address-error').textContent = 'Invalid JSON format';
+                showMessage('Invalid JSON in address field', 'error');
+                return;
+            }
+
+            const data = { name, address };
+
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    if (result.address) {
+                        document.getElementById('address-error').textContent = Array.isArray(result.address) ? result.address.join(', ') : result.address;
+                    }
+                    if (result.name) {
+                        document.getElementById('name-error').textContent = Array.isArray(result.name) ? result.name.join(', ') : result.name;
+                    }
+                    showMessage('Error creating location. Please check the form.', 'error');
+                    return;
+                }
+
+                showMessage('Location created successfully!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/locations/rest/';
+                }, 1500);
+            } catch (error) {
+                showMessage(`Error creating location: ${error.message}`, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

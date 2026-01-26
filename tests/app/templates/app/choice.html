@@ -1,0 +1,186 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Choose Location Interface" %} - Test App</title>
+    <style>
+        .choice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .page-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .page-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .page-header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .choice-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+        .choice-card {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .choice-card:hover {
+            border-color: #417690;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        .choice-card.django {
+            border-color: #417690;
+        }
+        .choice-card.django:hover {
+            border-color: #205067;
+            background-color: #f8f9fa;
+        }
+        .choice-card.rest {
+            border-color: #28a745;
+        }
+        .choice-card.rest:hover {
+            border-color: #218838;
+            background-color: #f8f9fa;
+        }
+        .choice-card-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        .choice-card-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .choice-card-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .badge-django {
+            background-color: #417690;
+            color: white;
+        }
+        .badge-rest {
+            background-color: #28a745;
+            color: white;
+        }
+        .choice-card-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .choice-card-features {
+            text-align: left;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .choice-card-features ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .choice-card-features li {
+            padding: 8px 0;
+            color: #555;
+        }
+        .choice-card-features li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #417690;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .btn:hover {
+            background-color: #205067;
+        }
+        .btn-rest {
+            background-color: #28a745;
+        }
+        .btn-rest:hover {
+            background-color: #218838;
+        }
+        @media (max-width: 768px) {
+            .choice-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="choice-container">
+        <div class="page-header">
+            <h1>{% trans "Choose Location Interface" %}</h1>
+            <p>{% trans "Select the interface you want to use to manage locations" %}</p>
+        </div>
+
+        <div class="choice-cards">
+            <a href="{% url 'app:location_django_list' %}" class="choice-card django">
+                <div class="choice-card-icon">🐍</div>
+                <div class="choice-card-title">{% trans "Django Native" %}</div>
+                <span class="choice-card-badge badge-django">Django</span>
+                <div class="choice-card-description">
+                    {% trans "Classic Django views using forms and templates" %}
+                </div>
+                <div class="choice-card-features">
+                    <ul>
+                        <li>{% trans "Traditional Django forms" %}</li>
+                        <li>{% trans "Server-side rendering" %}</li>
+                        <li>{% trans "Full page reloads" %}</li>
+                        <li>{% trans "Django template system" %}</li>
+                    </ul>
+                </div>
+                <div class="btn">{% trans "Use Django Native" %}</div>
+            </a>
+
+            <a href="{% url 'app:location_rest_list' %}" class="choice-card rest">
+                <div class="choice-card-icon">🔌</div>
+                <div class="choice-card-title">{% trans "REST Framework" %}</div>
+                <span class="choice-card-badge badge-rest">REST API</span>
+                <div class="choice-card-description">
+                    {% trans "Django REST Framework views with JSON serialization" %}
+                </div>
+                <div class="choice-card-features">
+                    <ul>
+                        <li>{% trans "REST API endpoints" %}</li>
+                        <li>{% trans "JSON serialization" %}</li>
+                        <li>{% trans "API-first approach" %}</li>
+                        <li>{% trans "DRF serializers" %}</li>
+                    </ul>
+                </div>
+                <div class="btn btn-rest">{% trans "Use REST Framework" %}</div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
