@@ -35,7 +35,6 @@ const toggle = (el, show = null) => {
 }
 
 const text = (data) => {
-    console.log("data", data);
     return config.cls.text_fields
     .map(f => data[f])
     .filter(f => f !== null && f !== undefined && f !== '')
@@ -100,7 +99,6 @@ const fetch_addresses = (name, query) => {
         })
         .catch(error => {
             if (error.name === 'AbortError') return;
-            console.error('Fetch error:', error);
             toggle(field.loading, false);
             toggle(field.results, false);
         });
@@ -108,55 +106,108 @@ const fetch_addresses = (name, query) => {
 
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll(`.${config.cls.wrapper}`).forEach(wrapper => {
-        const name = wrapper.getAttribute('name');
-        const dataFields = wrapper.querySelector(`.${config.cls.dataFields}`);
-        
-        const field = {
-            name,
-            url: wrapper.dataset.autocompleteUrl,
-            redirectUrl: wrapper.dataset.redirectUrl,
-            editIcon: wrapper.querySelector(`.${config.cls.editIcon}`),
-            viewLink: wrapper.querySelector(`.${config.cls.viewLink}`),
-            dataFields,
-            results: wrapper.querySelector(`.${config.cls.results}`),
-            list: wrapper.querySelector(`.${config.cls.list}`),
-            loading: wrapper.querySelector(`.${config.cls.loading}`),
-            searchInput: wrapper.querySelector('input[type="search"]'),
-            dataInputs: Array.from(dataFields.querySelectorAll('input')),
-            textarea: wrapper.querySelector('textarea'),
-            controller: null,
-        };
-        
-        fields[name] = field;
+const initializeGeoaddressWidget = (wrapper) => {
+    const name = wrapper.getAttribute('name');
+    
+    if (!name) {
+        return;
+    }
+    
+    // Skip if already initialized
+    if (wrapper.dataset.geoaddressInitialized === 'true') {
+        return;
+    }
+    
+    const dataFields = wrapper.querySelector(`.${config.cls.dataFields}`);
+    
+    const field = {
+        name,
+        url: wrapper.dataset.autocompleteUrl,
+        redirectUrl: wrapper.dataset.redirectUrl,
+        editIcon: wrapper.querySelector(`.${config.cls.editIcon}`),
+        viewLink: wrapper.querySelector(`.${config.cls.viewLink}`),
+        dataFields,
+        results: wrapper.querySelector(`.${config.cls.results}`),
+        list: wrapper.querySelector(`.${config.cls.list}`),
+        loading: wrapper.querySelector(`.${config.cls.loading}`),
+        searchInput: wrapper.querySelector('input[type="search"]'),
+        dataInputs: Array.from(dataFields.querySelectorAll('input')),
+        textarea: wrapper.querySelector('textarea'),
+        controller: null,
+    };
+    
+    fields[name] = field;
 
-        field.editIcon.addEventListener('click', () => toggle(field.dataFields));
-        
-        field.dataInputs.forEach(input => {
-            input.addEventListener('input', () => {
-                const data = {};
-                field.dataInputs.forEach(inp => {
-                    const key = inp.name.split(config.suffix)[0];
-                    data[key] = inp.value;
-                });
-                data.text = text(data);
-                fill_data(data, field.viewLink, field.redirectUrl);
-                field.textarea.value = JSON.stringify(data);
-                field.searchInput.value = data.text;
+    field.editIcon.addEventListener('click', () => toggle(field.dataFields));
+    
+    field.dataInputs.forEach(input => {
+        input.addEventListener('input', () => {
+            const data = {};
+            field.dataInputs.forEach(inp => {
+                const key = inp.name.split(config.suffix)[0];
+                data[key] = inp.value;
             });
+            data.text = text(data);
+            fill_data(data, field.viewLink, field.redirectUrl);
+            field.textarea.value = JSON.stringify(data);
+            field.searchInput.value = data.text;
         });
-        
+    });
+    
 
-        field.searchInput.addEventListener('focus', function() {
-            const query = this.value.trim();
-            fetch_addresses(name, query);
+    field.searchInput.addEventListener('focus', function() {
+        const query = this.value.trim();
+        fetch_addresses(name, query);
+    });
+
+    field.searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        fetch_addresses(name, query);
+    });
+
+    wrapper.dataset.geoaddressInitialized = 'true';
+}
+
+const initializeAllGeoaddressWidgets = () => {
+    document.querySelectorAll(`.${config.cls.wrapper}`).forEach(initializeGeoaddressWidget);
+}
+
+document.addEventListener('DOMContentLoaded', initializeAllGeoaddressWidgets);
+
+// Support for Django admin inlines - reinitialize when formset is added
+if (typeof django !== 'undefined' && django.jQuery) {
+    django.jQuery(document).on('formset:added', function(event, $row, formsetName) {
+        // Small delay to ensure DOM is ready
+        setTimeout(function() {
+            $row.find(`.${config.cls.wrapper}`).each(function() {
+                initializeGeoaddressWidget(this);
+            });
+        }, 100);
+    });
+}
+
+// Also watch for dynamic additions using MutationObserver as fallback
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+            if (node.nodeType === 1) { // Element node
+                // Check if the added node is a wrapper
+                if (node.classList && node.classList.contains(config.cls.wrapper)) {
+                    initializeGeoaddressWidget(node);
+                }
+                // Check if the added node contains wrappers
+                if (node.querySelectorAll) {
+                    node.querySelectorAll(`.${config.cls.wrapper}`).forEach(initializeGeoaddressWidget);
+                }
+            }
         });
-
-        field.searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            fetch_addresses(name, query);
-        });
-
     });
 });
+
+// Start observing the document for changes
+if (document.body) {
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}

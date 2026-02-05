@@ -1,9 +1,10 @@
 {% load i18n static %}
 <div class="geoaddress-autocomplete-wrapper"
+    name="{{ name }}"
     data-autocomplete-url="{{ autocomplete_url }}"
     data-redirect-url="{{ redirect_url }}"
     data-from-url-name="{{ request }}">
-    <div class="geoaddress-autocomplete-field geoaddress-autocomplete-hidden">
+    <div class="geoaddress-autocomplete-field">
         <input type="search" id="{{ name }}_geoaddress_autocomplete" name="{{ name }}_geoaddress_autocomplete" value="{{ search_value }}" />
 
         <div class="geoaddress-autocomplete-icons">
