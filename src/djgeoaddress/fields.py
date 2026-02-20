@@ -29,30 +29,28 @@ class GeoaddressValue(dict):
 
 
 class GeoaddressAutocompleteWidget(TextInput):
-    """Widget to store geoaddress data via AddressModel with autocomplete."""
-
     template_name = "djgeoaddress/autocomplete.html"
     address_url_name = "djgeoaddress:redirect_to_address_list"
     redirect_url = "djgeoaddress:redirect_to_address"
 
-    def get_url(self) -> str:
-        """Return the autocomplete URL.
+    class Media:
+        css = {"all": ("css/geoaddress_autocomplete.css",)}
+        js = ("js/geoaddress_autocomplete.js",)
 
-        Returns:
-            Autocomplete URL string
-        """
+    def get_url(self) -> str:
+        """Return the autocomplete URL."""
         return reverse(self.address_url_name)
 
-    def render(
-        self, name: str, value: Any, attrs: dict[str, Any] | None = None, renderer: Any = None
-    ) -> str:
-        autocomplete_url = self.get_url()
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        context["autocomplete_url"] = self.get_url()
+        context["redirect_url"] = reverse(self.redirect_url)
         try:
             values = json.loads(value) if value else {}
-            
         except (json.JSONDecodeError, TypeError):
             values = {}
 
+        context["value"] = values
         geoaddress_data = {
             k: {
                 "value": values.get(k) or "" if isinstance(values, dict) else "",
@@ -75,24 +73,14 @@ class GeoaddressAutocompleteWidget(TextInput):
             for k, v in GEOADDRESS_FIELDS_COORDINATES.items()
         }
         text_full = [data["value"] for data in geoaddress_data.values() if data["value"]]
-        context = {
-            "name": name,
-            "value": value,
-            "attrs": attrs,
+        context.update({
             "search_value": ", ".join(text_full) if text_full else "",
-            "autocomplete_url": autocomplete_url,
-            "redirect_url": reverse(self.redirect_url),
             "geoaddress_data": geoaddress_data,
             "geoaddress_optionals": geoaddress_optionals,
             "geoaddress_coordinates": geoaddress_coordinates,
             "geoaddress_fields": list(GEOADDRESS_FULL_FIELDS.keys()),
-        }
-        return render_to_string(self.template_name, context)
-
-    class Media:
-        js = ("js/geoaddress_autocomplete.js",)
-        css = {"all": ("css/geoaddress_autocomplete.css",)}
-
+        })
+        return context
 
 class GeoaddressField(models.JSONField):
     """Field to store geoaddress data via AddressModel with autocomplete."""

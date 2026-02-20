@@ -1,12 +1,11 @@
 {% load i18n static %}
 <div class="geoaddress-autocomplete-wrapper"
-    name="{{ name }}"
+    name="{{ widget.name }}"
     data-autocomplete-url="{{ autocomplete_url }}"
     data-redirect-url="{{ redirect_url }}"
     data-from-url-name="{{ request }}">
     <div class="geoaddress-autocomplete-field">
-        <input type="search" id="{{ name }}_geoaddress_autocomplete" name="{{ name }}_geoaddress_autocomplete" value="{{ search_value }}" />
-
+        <input type="search" id="{{ widget.name }}_geoaddress_autocomplete" name="{{ widget.name }}_geoaddress_autocomplete" value="{{ search_value }}" />
         <div class="geoaddress-autocomplete-icons">
             <img src="{% static 'admin/img/icon-changelink.svg' %}" alt="Edit" class="geoaddress-autocomplete-edit-icon" />
             <a href="#" class="geoaddress-autocomplete-view-link geoaddress-autocomplete-hidden">
@@ -22,12 +21,12 @@
     </div>
 
     <div class="geoaddress-data geoaddress-autocomplete-hidden">
-        <hr>
+        <div class="geoaddress-optionals-separator">{% trans "Essentials" %}</div>
         <div class="geoaddress-data-fieldset">
             {% for k, v in geoaddress_data.items %}
             <div class="geoaddress-data-field">
-                <label for="{{ k }}">{{ v.label }}</label>
-                <input type="text" name="{{ k }}_geoaddress_autocomplete" id="{{ k }}_geoaddress_autocomplete" value="{{ v.value }}" />
+                <label for="{{ widget.name }}_{{ k }}">{{ v.label }}</label>
+                <input type="text" name="{{ widget.name }}_{{ k }}" id="{{ widget.name }}_{{ k }}" value="{{ v.value }}" />
             </div>
             {% endfor %}
         </div>
@@ -35,8 +34,8 @@
         <div class="geoaddress-data-fieldset">
             {% for k, v in geoaddress_optionals.items %}
             <div class="geoaddress-data-field">
-                <label for="{{ k }}">{{ v.label }}</label>
-                <input type="text" name="{{ k }}_geoaddress_autocomplete" id="{{ k }}_geoaddress_autocomplete" value="{{ v.value }}" />
+                <label for="{{ widget.name }}_{{ k }}">{{ v.label }}</label>
+                <input type="text" name="{{ widget.name }}_{{ k }}" id="{{ widget.name }}_{{ k }}" value="{{ v.value }}" />
             </div>
             {% endfor %}
         </div>
@@ -44,11 +43,11 @@
         <div class="geoaddress-data-fieldset">
             {% for k, v in geoaddress_coordinates.items %}
             <div class="geoaddress-data-field">
-                <label for="{{ k }}">{{ v.label }}</label>
-                <input type="text" name="{{ k }}_geoaddress_autocomplete" id="{{ k }}_geoaddress_autocomplete" value="{{ v.value }}" />
+                <label for="{{ widget.name }}_{{ k }}">{{ v.label }}</label>
+                <input type="text" name="{{ widget.name }}_{{ k }}" id="{{ widget.name }}_{{ k }}" value="{{ v.value }}" />
             </div>
             {% endfor %}
         </div>
     </div>
-    <textarea class="geoaddress-autocomplete-hidden" name="{{ name }}" id="{{ name }}">{{ value }}</textarea>
+    <textarea class="geoaddress-autocomplete-hidden" name="{{ widget.name }}" id="{{ widget.name }}">{{ widget.value }}</textarea>
 </div>

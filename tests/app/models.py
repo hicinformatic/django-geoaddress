@@ -5,10 +5,26 @@ from django.utils.translation import gettext_lazy as _
 
 from djgeoaddress.fields import GeoaddressField
 
+class Addressbook(models.Model):
+    """Address book model to test Location inline in admin."""
+
+    name = models.CharField(
+        max_length=255,
+        verbose_name=_("Name"),
+        help_text=_("Address book name"),
+    )
+
 
 class Location(models.Model):
     """Model to test GeoaddressField."""
-
+    addressbook = models.ForeignKey(
+        Addressbook,
+        on_delete=models.SET_NULL,
+        related_name="locations",
+        verbose_name=_("Address book"),
+        blank=True,
+        null=True,
+    )
     name = models.CharField(
         max_length=255,
         verbose_name=_("Name"),

@@ -1,10 +1,3 @@
-
-
-.geoaddress-autocomplete-wrapper {
-
-}
-
-
 .geoaddress-autocomplete-hidden {
     display: none;
 }
@@ -20,7 +13,6 @@
     width: 100%;
 }
 
-
 .geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field > .geoaddress-autocomplete-icons {
     display: flex;
     gap: 5px;
@@ -28,10 +20,11 @@
 
 .geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field > .geoaddress-autocomplete-icons img {
     filter: grayscale(100%);
+    cursor: pointer;
+    display: inline-block;
 }
 
 .geoaddress-autocomplete-wrapper > .geoaddress-autocomplete-field > .geoaddress-autocomplete-icons img:hover {
-    cursor: pointer;
     filter: grayscale(0%);
 }
 

@@ -34,6 +34,7 @@ const toggle = (el, show = null) => {
     }
 }
 
+
 const text = (data) => {
     return config.cls.text_fields
     .map(f => data[f])
@@ -52,10 +53,23 @@ const fill_data = (data, view, redirect) => {
     }
 }
 
+const getDataKey = (inputName, baseName) =>
+    inputName.startsWith(baseName + '_')
+        ? inputName.slice(baseName.length + 1)
+        : inputName;
+
 const fields = {};
 
 const fetch_addresses = (name, query) => {
-    const field = fields[name];
+    let field = fields[name];
+    if (!field?.list) {
+        const wrapper = document.querySelector(`.${config.cls.wrapper}[name="${name}"]`);
+        if (wrapper) {
+            initializeGeoaddressWidget(wrapper);
+            field = fields[name];
+        }
+    }
+    if (!field?.list) return;
     field.list.innerHTML = '';
     
     if (query.length < 2) {
@@ -75,7 +89,8 @@ const fetch_addresses = (name, query) => {
     })
         .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
         .then(data => {
-            data.addresses.forEach(address => {
+            const addresses = data?.addresses ?? data?.results ?? [];
+            addresses.forEach(address => {
                 const addr = document.createElement('div');
                 addr.className = config.cls.address;
                 addr.textContent = text(address);
@@ -83,13 +98,13 @@ const fetch_addresses = (name, query) => {
                 addr.addEventListener('click', function() {
                     const addr_json = JSON.parse(this.dataset.address);
                     field.textarea.value = this.dataset.address;
-                    field.searchInput.value = text(address);
+                    if (field.searchInput) field.searchInput.value = text(address);
                     field.dataInputs.forEach(input => {
-                        const key = input.name.split(config.suffix)[0];
+                        const key = getDataKey(input.name, name);
                         input.value = addr_json[key] || '';
                     });
                     fill_data(data, field.viewLink, field.redirectUrl);
-                    field.searchInput.value = text(address);
+                    if (field.searchInput) field.searchInput.value = text(address);
                     toggle(field.results, false);
                 });
                 field.list.appendChild(addr);
@@ -101,6 +116,7 @@ const fetch_addresses = (name, query) => {
             if (error.name === 'AbortError') return;
             toggle(field.loading, false);
             toggle(field.results, false);
+            field.wrapper?.classList.remove(config.cls.resultsVisible);
         });
 }
 
@@ -109,7 +125,7 @@ const fetch_addresses = (name, query) => {
 const initializeGeoaddressWidget = (wrapper) => {
     const name = wrapper.getAttribute('name');
     
-    if (!name) {
+    if (!name || name.includes('__prefix__')) {
         return;
     }
     
@@ -119,9 +135,11 @@ const initializeGeoaddressWidget = (wrapper) => {
     }
     
     const dataFields = wrapper.querySelector(`.${config.cls.dataFields}`);
-    
+    if (!dataFields) return;
+
     const field = {
         name,
+        wrapper,
         url: wrapper.dataset.autocompleteUrl,
         redirectUrl: wrapper.dataset.redirectUrl,
         editIcon: wrapper.querySelector(`.${config.cls.editIcon}`),
@@ -135,16 +153,14 @@ const initializeGeoaddressWidget = (wrapper) => {
         textarea: wrapper.querySelector('textarea'),
         controller: null,
     };
-    
-    fields[name] = field;
 
-    field.editIcon.addEventListener('click', () => toggle(field.dataFields));
+    fields[name] = field;
     
     field.dataInputs.forEach(input => {
         input.addEventListener('input', () => {
             const data = {};
             field.dataInputs.forEach(inp => {
-                const key = inp.name.split(config.suffix)[0];
+                const key = getDataKey(inp.name, name);
                 data[key] = inp.value;
             });
             data.text = text(data);
@@ -155,16 +171,6 @@ const initializeGeoaddressWidget = (wrapper) => {
     });
     
 
-    field.searchInput.addEventListener('focus', function() {
-        const query = this.value.trim();
-        fetch_addresses(name, query);
-    });
-
-    field.searchInput.addEventListener('input', function() {
-        const query = this.value.trim();
-        fetch_addresses(name, query);
-    });
-
     wrapper.dataset.geoaddressInitialized = 'true';
 }
 
@@ -174,17 +180,59 @@ const initializeAllGeoaddressWidgets = () => {
 
 document.addEventListener('DOMContentLoaded', initializeAllGeoaddressWidgets);
 
+// Edit icon click via delegation - works even if widget init failed or row added dynamically
+document.addEventListener('click', (e) => {
+    if (e.target.closest(`.${config.cls.editIcon}`)) {
+        const wrapper = e.target.closest(`.${config.cls.wrapper}`);
+        if (wrapper) {
+            const dataFields = wrapper.querySelector(`.${config.cls.dataFields}`);
+            if (dataFields) {
+                e.stopPropagation();
+                toggle(dataFields);
+            }
+        }
+    }
+});
+
+// Nom du widget = name du textarea/name sans le suffixe _geoaddress_autocomplete
+const getNameFromInput = (input) => {
+    const n = input?.name;
+    if (!n || !n.endsWith('_geoaddress_autocomplete')) return null;
+    return n.slice(0, -'_geoaddress_autocomplete'.length);
+};
+
+// Search: lazy init + fetch via delegation - handles inline rows added after DOM ready
+document.addEventListener('focusin', (e) => {
+    const input = e.target;
+    const name = getNameFromInput(input);
+    if (!name || name.includes('__prefix__')) return;
+    const wrapper = input.closest(`.${config.cls.wrapper}`);
+    if (!wrapper) return;
+    wrapper.setAttribute('name', name);
+    if (wrapper.dataset.geoaddressInitialized !== 'true') initializeGeoaddressWidget(wrapper);
+    if (fields[name]?.list) fetch_addresses(name, input.value.trim());
+});
+
+document.addEventListener('input', (e) => {
+    const input = e.target;
+    const name = getNameFromInput(input);
+    if (!name || name.includes('__prefix__')) return;
+    const wrapper = input.closest(`.${config.cls.wrapper}`);
+    if (!wrapper) return;
+    wrapper.setAttribute('name', name);
+    if (wrapper.dataset.geoaddressInitialized !== 'true') initializeGeoaddressWidget(wrapper);
+    if (fields[name]?.list) fetch_addresses(name, input.value.trim());
+});
+
 // Support for Django admin inlines - reinitialize when formset is added
-if (typeof django !== 'undefined' && django.jQuery) {
-    django.jQuery(document).on('formset:added', function(event, $row, formsetName) {
-        // Small delay to ensure DOM is ready
-        setTimeout(function() {
-            $row.find(`.${config.cls.wrapper}`).each(function() {
-                initializeGeoaddressWidget(this);
-            });
-        }, 100);
-    });
-}
+// Django dispatches CustomEvent on the new row; event.target = row
+document.addEventListener('formset:added', (event) => {
+    const row = event.target;
+    if (!row?.querySelectorAll) return;
+    setTimeout(() => {
+        row.querySelectorAll(`.${config.cls.wrapper}`).forEach(initializeGeoaddressWidget);
+    }, 100);
+});
 
 // Also watch for dynamic additions using MutationObserver as fallback
 const observer = new MutationObserver(function(mutations) {
