@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from geoaddress import GEOADDRESS_FIELDS_DESCRIPTIONS
 from virtualqueryset.models import VirtualModel
 
-from djgeoaddress import fields_associations
+from djproviderkit import fields_associations
 from djgeoaddress.managers.suggest import AddressManager
 
 FIELDS_GEOADDRESS = GEOADDRESS_FIELDS_DESCRIPTIONS
@@ -69,5 +69,5 @@ class AddressModel(BaseAddressModel):
 
     class Meta:
         managed = False
-        verbose_name = _('Geoaddress Address')
-        verbose_name_plural = _('Geoaddress Addresses')
+        verbose_name = _('Address')
+        verbose_name_plural = _('Addresses')

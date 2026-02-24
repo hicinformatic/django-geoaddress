@@ -66,7 +66,7 @@ class Command(BaseCommand):
                     self.stdout.write(f"\n=== {provider_name} ===")
                     if isinstance(result, dict) and 'provider' in result:
                         provider_obj = result['provider']
-                        response = provider_obj.response('reverse_geocode', raw=raw, format=output_format)
+                        response = provider_obj.response('reverse_geocode', raw=raw, output_format=output_format)
                         self.stdout.write(response)
                     else:
                         self.stdout.write(str(result))
@@ -75,7 +75,7 @@ class Command(BaseCommand):
                     if isinstance(result, dict) and 'provider' in result:
                         provider_obj = result['provider']
                         self.stdout.write(f"\n=== {provider_obj.name} ===")
-                        response = provider_obj.response('reverse_geocode', raw=raw, format=output_format)
+                        response = provider_obj.response('reverse_geocode', raw=raw, output_format=output_format)
                         self.stdout.write(str(response))
                     else:
                         self.stdout.write(str(result))

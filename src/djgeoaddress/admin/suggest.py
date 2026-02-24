@@ -23,7 +23,7 @@ from geoaddress import (
     GEOADDRESS_FIELDS_COORDINATES,
 )
 
-from djproviderkit.admin.service import FirstServiceAdminFilter, BackendServiceAdminFilter
+from djproviderkit.admin.filters import FirstServiceAdminFilter, BackendServiceAdminFilter
 
 BackendServiceAdminFilter.provider_model = GeoaddressProviderModel
 
@@ -38,7 +38,6 @@ class AddressAdmin(AdminBoostModel):
     readonly_fields = [
         "address_line1",
         "backend",
-
     ]
 
     def change_fieldsets(self):
