@@ -5,9 +5,8 @@ from django.utils.translation import gettext_lazy as _
 
 from virtualqueryset.models import VirtualModel
 from geoaddress.providers.base import GeoaddressProvider
-from djproviderkit.models.service import define_provider_fields, define_service_fields
-
-from ..managers.provider import ProviderManager
+from djproviderkit.models.define import define_provider_fields, define_service_fields
+from djproviderkit.managers import BaseProviderManager
 
 services = list(GeoaddressProvider.services_cfg.keys())
 
@@ -24,13 +23,13 @@ class GeoaddressProviderModel(VirtualModel):
         primary_key=True,
     )
 
-    objects = ProviderManager()
+    objects = BaseProviderManager(package_name='geoaddress')
 
     class Meta:
         managed = False
         app_label = 'djgeoaddress'
-        verbose_name = _("Geoaddress Provider")
-        verbose_name_plural = _("Geoaddress Providers")
+        verbose_name = _("Provider")
+        verbose_name_plural = _("Providers")
         ordering = ['-priority', 'name']
 
     def __str__(self) -> str:
